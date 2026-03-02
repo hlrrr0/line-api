@@ -11,18 +11,40 @@
    - anon/public key
    - service_role key
 
-### 2. LINE Developersの設定
+### 2. LINE公式アカウントとMessaging APIの設定
+
+#### 2-1. LINE公式アカウントの作成
 
 1. [LINE Developers Console](https://developers.line.biz/console/)にアクセス
 2. 新しいプロバイダーを作成（または既存のものを選択）
-3. Messaging APIチャネルを作成
-4. 以下の設定を行う:
-   - Messaging API設定タブ:
-     - Channel access token を発行
+3. 「LINE公式アカウントを作成」ボタンをクリック
+   - ※ 現在、Messaging APIチャネルを直接作成することはできません
+4. LINE Official Account Managerに遷移するので、以下の情報を入力:
+   - アカウント名
+   - 業種
+   - その他必要な情報
+
+#### 2-2. Messaging APIの有効化
+
+1. [LINE Official Account Manager](https://manager.line.biz/)にアクセス
+2. 作成したアカウントを選択
+3. 「設定」→「Messaging API」を選択
+4. 「Messaging APIを利用する」ボタンをクリック
+5. Developer同意画面で「同意する」をクリック
+
+#### 2-3. LINE Developersでの設定
+
+1. [LINE Developers Console](https://developers.line.biz/console/)に戻る
+2. プロバイダー配下に作成されたMessaging APIチャネルを開く
+3. 以下の設定を行う:
+   - **チャネル基本設定タブ**:
+     - Channel Secret をコピー（後で使用）
+   - **Messaging API設定タブ**:
+     - Channel access token (long-lived) を発行
      - Webhook URLを設定（後で設定）
-     - Webhook の利用を ON にする
-   - チャネル基本設定タブ:
-     - Channel Secret を確認
+     - Webhook の「利用する」を ON にする
+     - 「応答メッセージ」を OFF にする（重要：二重送信防止）
+     - 「あいさつメッセージ」を OFF にする（プログラムで制御するため）
 
 ## インストール手順
 
