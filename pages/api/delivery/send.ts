@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTenantByKey } from '@/lib/tenant'
-import { sendBulkMessages } from '@/lib/line-multitenant'
+import { sendBulkMessages, createLineClient } from '@/lib/line-multitenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,7 +11,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { tenantKey, segmentId, messageType, messageContent } = req.body
+  const { tenantKey, segmentId, lineUserId, messageType, messageContent } = req.body
 
   if (!tenantKey || !messageType || !messageContent) {
     return res.status(400).json({ error: 'Missing required fields' })
@@ -21,6 +21,46 @@ export default async function handler(
   const tenant = await getTenantByKey(tenantKey)
   if (!tenant) {
     return res.status(404).json({ error: 'Tenant not found' })
+  }
+
+  // 個人宛て送信
+  if (lineUserId) {
+    try {
+      const client = createLineClient(tenant)
+      const messages = buildMessages(messageType, messageContent)
+      await client.pushMessage(lineUserId, messages)
+
+      // 送信メッセージを DB に保存
+      const { data: userRow } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('line_user_id', lineUserId)
+        .single()
+      let savedContent = ''
+      if (messageType === 'text') {
+        savedContent = messageContent.text ?? ''
+      } else if (messageType === 'image') {
+        savedContent = '[画像]'
+      } else if (messageType === 'flex') {
+        savedContent = messageContent.altText ?? '[Flexメッセージ]'
+      } else {
+        savedContent = `[${messageType}]`
+      }
+      await supabaseAdmin.from('messages').insert({
+        tenant_id: tenant.id,
+        user_id: userRow?.id ?? null,
+        line_user_id: lineUserId,
+        direction: 'sent',
+        message_type: messageType,
+        content: savedContent,
+      })
+
+      return res.status(200).json({ success: true, totalRecipients: 1, successCount: 1, failureCount: 0 })
+    } catch (error) {
+      console.error('Individual message error:', error)
+      return res.status(500).json({ error: 'Failed to send message' })
+    }
   }
 
   try {

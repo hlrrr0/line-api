@@ -16,6 +16,7 @@ const menuGroups = [
     label: '配信管理',
     color: '#1976d2',
     items: [
+      { href: '/admin/messages', icon: '💬', title: 'メッセージ受信', description: 'ユーザーからの受信メッセージを確認・返信' },
       { href: '/admin/delivery', icon: '📨', title: 'メッセージ配信', description: 'セグメント選択してLINE配信' },
       { href: '/admin/segments', icon: '🎯', title: 'セグメント管理', description: 'フォーム回答で絞り込み条件を設定' },
       { href: '/admin/delivery/history', icon: '📋', title: '配信履歴', description: '過去の配信結果を確認' },

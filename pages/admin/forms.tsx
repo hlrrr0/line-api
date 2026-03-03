@@ -287,6 +287,20 @@ export default function FormsPage() {
                       <div style={styles.formInfo}>
                         <span>フィールド数: {form.fields?.length || 0}</span>
                       </div>
+                      <div style={styles.formUrl}>
+                        <code style={styles.urlText}>
+                          {typeof window !== 'undefined' ? window.location.origin : ''}/form/{selectedTenantKey}/{form.id}
+                        </code>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/form/${selectedTenantKey}/${form.id}`
+                            navigator.clipboard.writeText(url).then(() => alert('URLをコピーしました'))
+                          }}
+                          style={styles.copyButton}
+                        >
+                          URLをコピー
+                        </button>
+                      </div>
                       <div style={styles.formActions}>
                         <button
                           onClick={() => handleEditForm(form)}
@@ -658,6 +672,33 @@ const styles = {
     fontSize: '14px',
     color: '#999',
     marginBottom: '15px',
+  },
+  formUrl: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '15px',
+    padding: '10px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
+    flexWrap: 'wrap' as const,
+  },
+  urlText: {
+    fontSize: '12px',
+    color: '#555',
+    wordBreak: 'break-all' as const,
+    flex: 1,
+  },
+  copyButton: {
+    padding: '6px 14px',
+    backgroundColor: '#06c755',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
   },
   formActions: {
     display: 'flex',

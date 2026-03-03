@@ -15,13 +15,6 @@ export default function Home() {
         </div>
 
         <div style={styles.linksContainer}>
-          <a href="/form" style={styles.linkCard}>
-            <h2 style={styles.linkTitle}>📝 アンケートフォーム</h2>
-            <p style={styles.linkDescription}>
-              フォームに回答してLINEでお得な情報を受け取る
-            </p>
-          </a>
-
           <a href="/admin" style={styles.linkCard}>
             <h2 style={styles.linkTitle}>⚙️ 管理画面</h2>
             <p style={styles.linkDescription}>

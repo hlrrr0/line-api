@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 
 interface User {
   id: string
@@ -17,6 +18,7 @@ interface Tenant {
 }
 
 export default function UsersPage() {
+  const router = useRouter()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [users, setUsers] = useState<User[]>([])
@@ -140,7 +142,11 @@ export default function UsersPage() {
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.id} style={styles.tableRow}>
+                  <tr
+                    key={user.id}
+                    style={{ ...styles.tableRow, cursor: 'pointer' }}
+                    onClick={() => router.push(`/admin/users/${user.id}?tenantKey=${selectedTenantKey}`)}
+                  >
                     <td style={styles.td}>{user.display_name || '未設定'}</td>
                     <td style={styles.td}>{user.line_user_id}</td>
                     <td style={styles.td}>

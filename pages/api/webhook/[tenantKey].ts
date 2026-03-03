@@ -124,22 +124,63 @@ async function handleUnfollow(event: UnfollowEvent, tenant: any) {
 
 // メッセージ受信時の処理
 async function handleMessage(event: MessageEvent, tenant: any) {
-  const userId = event.source.userId
-  if (!userId) return
+  const lineUserId = event.source.userId
+  if (!lineUserId) return
 
-  // テキストメッセージの場合
+  // users テーブルから内部 user_id を取得
+  const { data: userRow } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('tenant_id', tenant.id)
+    .eq('line_user_id', lineUserId)
+    .single()
+  const internalUserId: string | null = userRow?.id ?? null
+
   if (event.message.type === 'text') {
     const userMessage = event.message.text
 
-    // 簡単な自動応答例
-    let replyMessage = 'メッセージを受信しました。'
+    // 受信メッセージを DB に保存
+    const { error: msgError } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        tenant_id: tenant.id,
+        user_id: internalUserId,
+        line_user_id: lineUserId,
+        direction: 'received',
+        message_type: 'text',
+        content: userMessage,
+      })
+    if (msgError) console.error('Error saving received message:', msgError)
 
+    // 自動返信
+    let replyMessage = 'メッセージを受信しました。'
     if (userMessage.includes('アンケート') || userMessage.includes('フォーム')) {
       replyMessage = 'アンケートフォームは下記のメニューから「アンケート」を選択してください。'
     } else if (userMessage.includes('ヘルプ') || userMessage.includes('使い方')) {
       replyMessage = '使い方:\n1. メニューから「アンケート」を選択\n2. フォームに回答\n3. お得な情報を受け取る'
     }
-
-    await sendTextMessage(tenant, userId, replyMessage)
+    await sendTextMessage(tenant, lineUserId, replyMessage)
+  } else {
+    // テキスト以外（画像・スタンプ等）はプレースホルダーで保存
+    const placeholders: Record<string, string> = {
+      image: '[画像]',
+      video: '[動画]',
+      audio: '[音声]',
+      file: '[ファイル]',
+      location: '[位置情報]',
+      sticker: '[スタンプ]',
+    }
+    const content = placeholders[event.message.type] ?? `[${event.message.type}]`
+    const { error: msgError } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        tenant_id: tenant.id,
+        user_id: internalUserId,
+        line_user_id: lineUserId,
+        direction: 'received',
+        message_type: event.message.type,
+        content,
+      })
+    if (msgError) console.error('Error saving received message:', msgError)
   }
 }
