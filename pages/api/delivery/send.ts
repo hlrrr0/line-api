@@ -27,18 +27,20 @@ export default async function handler(
         .from('segments')
         .select('*')
         .eq('id', segmentId)
+        .eq('tenant_id', tenant.id)
         .single()
 
       if (!segment) {
         return res.status(404).json({ error: 'Segment not found' })
       }
 
-      targetUsers = await getUsersBySegment(segment.conditions)
+      targetUsers = await getUsersBySegment(segment.conditions, tenant.id)
     } else {
       // 全体配信
       const { data: users } = await supabaseAdmin
         .from('users')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .eq('is_blocked', false)
 
       targetUsers = users || []
