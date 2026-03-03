@@ -13,8 +13,14 @@ export default async function handler(
 
   const { tenantKey, segmentId, messageType, messageContent } = req.body
 
-  if (!messageType || !messageContent) {
+  if (!tenantKey || !messageType || !messageContent) {
     return res.status(400).json({ error: 'Missing required fields' })
+  }
+
+  // テナント情報を取得
+  const tenant = await getTenantByKey(tenantKey)
+  if (!tenant) {
+    return res.status(404).json({ error: 'Tenant not found' })
   }
 
   try {
