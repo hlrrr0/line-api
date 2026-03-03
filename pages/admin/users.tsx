@@ -10,19 +10,46 @@ interface User {
   created_at: string
 }
 
+interface Tenant {
+  id: string
+  tenant_key: string
+  name: string
+}
+
 export default function UsersPage() {
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all')
 
   useEffect(() => {
-    fetchUsers()
-  }, [filter])
+    fetchTenants()
+  }, [])
+
+  useEffect(() => {
+    if (selectedTenantKey) {
+      fetchUsers()
+    }
+  }, [filter, selectedTenantKey])
+
+  const fetchTenants = async () => {
+    try {
+      const response = await fetch('/api/admin/tenants')
+      const data = await response.json()
+      setTenants(data.tenants || [])
+      if (data.tenants && data.tenants.length > 0) {
+        setSelectedTenantKey(data.tenants[0].tenant_key)
+      }
+    } catch (error) {
+      console.error('Error fetching tenants:', error)
+    }
+  }
 
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/admin/users?filter=${filter}`)
+      const response = await fetch(`/api/admin/users?tenantKey=${selectedTenantKey}&filter=${filter}`)
       const data = await response.json()
       setUsers(data.users || [])
     } catch (error) {
@@ -43,6 +70,21 @@ export default function UsersPage() {
           <Link href="/admin" style={styles.backLink}>← 管理画面に戻る</Link>
           <h1 style={styles.title}>ユーザー管理</h1>
         </header>
+
+        <div style={styles.tenantSelector}>
+          <label style={styles.label}>テナント選択:</label>
+          <select
+            value={selectedTenantKey}
+            onChange={(e) => setSelectedTenantKey(e.target.value)}
+            style={styles.select}
+          >
+            {tenants.map(tenant => (
+              <option key={tenant.id} value={tenant.tenant_key}>
+                {tenant.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div style={styles.filterBar}>
           <button
@@ -133,6 +175,23 @@ const styles = {
     fontSize: '28px',
     color: '#333',
     margin: 0,
+  },
+  tenantSelector: {
+    marginBottom: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: 'bold' as const,
+  },
+  select: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    minWidth: '200px',
   },
   filterBar: {
     display: 'flex',

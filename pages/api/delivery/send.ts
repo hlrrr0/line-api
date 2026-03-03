@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendBulkMessages } from '@/lib/line'
+import { getTenantByKey } from '@/lib/tenant'
+import { sendBulkMessages } from '@/lib/line-multitenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,7 +11,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { segmentId, messageType, messageContent } = req.body
+  const { tenantKey, segmentId, messageType, messageContent } = req.body
 
   if (!messageType || !messageContent) {
     return res.status(400).json({ error: 'Missing required fields' })
@@ -51,6 +52,7 @@ export default async function handler(
     const { data: history, error: historyError } = await supabaseAdmin
       .from('delivery_history')
       .insert({
+        tenant_id: tenant.id,
         segment_id: segmentId || null,
         message_type: messageType,
         message_content: messageContent,
@@ -68,7 +70,7 @@ export default async function handler(
     const userIds = targetUsers.map(user => user.line_user_id)
     const messages = buildMessages(messageType, messageContent)
     
-    const { success, failure, results } = await sendBulkMessages(userIds, messages)
+    const { success, failure, results } = await sendBulkMessages(tenant, userIds, messages)
 
     // 配信結果を記録
     await supabaseAdmin
@@ -83,6 +85,7 @@ export default async function handler(
 
     // 個別配信ログを記録
     const logs = results.map((result, index) => ({
+      tenant_id: tenant.id,
       delivery_history_id: history.id,
       user_id: targetUsers[index].id,
       status: result.status === 'fulfilled' ? 'success' : 'failed',
@@ -105,10 +108,11 @@ export default async function handler(
 }
 
 // セグメント条件に基づいてユーザーを取得
-async function getUsersBySegment(conditions: any): Promise<any[]> {
+async function getUsersBySegment(conditions: any, tenantId: string): Promise<any[]> {
   let query = supabaseAdmin
     .from('users')
     .select('*')
+    .eq('tenant_id', tenantId)
     .eq('is_blocked', false)
 
   // タグによる絞り込み
@@ -116,6 +120,7 @@ async function getUsersBySegment(conditions: any): Promise<any[]> {
     const { data: userTags } = await supabaseAdmin
       .from('user_tags')
       .select('user_id, tags(name)')
+      .eq('tenant_id', tenantId)
       .in('tags.name', conditions.tags)
 
     if (userTags) {
@@ -129,6 +134,7 @@ async function getUsersBySegment(conditions: any): Promise<any[]> {
     const { data: responses } = await supabaseAdmin
       .from('form_responses')
       .select('user_id, form_data')
+      .eq('tenant_id', tenantId)
 
     if (responses) {
       const filteredUserIds = responses

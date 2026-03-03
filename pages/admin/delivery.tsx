@@ -1,15 +1,49 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 
+interface Tenant {
+  id: string
+  tenant_key: string
+  name: string
+}
+
 export default function DeliveryPage() {
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [messageText, setMessageText] = useState('')
   const [segmentId, setSegmentId] = useState('')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<any>(null)
 
+  useEffect(() => {
+    fetchTenants()
+  }, [])
+
+  const fetchTenants = async () => {
+    try {
+      const response = await fetch('/api/admin/tenants')
+      const data = await response.json()
+      setTenants(data.tenants || [])
+      if (data.tenants && data.tenants.length > 0) {
+        setSelectedTenantKey(data.tenants[0].tenant_key)
+      }
+    } catch (error) {
+      console.error('Error fetching tenants:', error)
+    }
+  }
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!selectedTenantKey) {
+      setResult({
+        success: false,
+        error: 'テナントを選択してください',
+      })
+      return
+    }
+
     setSending(true)
     setResult(null)
 
@@ -20,6 +54,7 @@ export default function DeliveryPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          tenantKey: selectedTenantKey,
           segmentId: segmentId || null,
           messageType: 'text',
           messageContent: {
@@ -69,6 +104,22 @@ export default function DeliveryPage() {
             <h2 style={styles.cardTitle}>新規配信</h2>
             
             <form onSubmit={handleSend} style={styles.form}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>テナント選択 *</label>
+                <select
+                  value={selectedTenantKey}
+                  onChange={(e) => setSelectedTenantKey(e.target.value)}
+                  required
+                  style={styles.select}
+                >
+                  {tenants.map(tenant => (
+                    <option key={tenant.id} value={tenant.tenant_key}>
+                      {tenant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={styles.formGroup}>
                 <label style={styles.label}>配信先セグメント</label>
                 <select
