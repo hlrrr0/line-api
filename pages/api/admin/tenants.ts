@@ -62,7 +62,8 @@ export default async function handler(
     } catch (error) {
       console.error('Error creating tenant:', error)
       return res.status(500).json({ error: 'Internal server error' })
-    }  } else if (req.method === 'PUT') {
+    }
+  } else if (req.method === 'PUT') {
     // テナント更新
     const { id, ...updateData } = req.body
 
@@ -88,7 +89,8 @@ export default async function handler(
     } catch (error) {
       console.error('Error updating tenant:', error)
       return res.status(500).json({ error: 'Internal server error' })
-    }  } else {
+    }
+  } else {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 }
