@@ -22,19 +22,23 @@ export default async function handler(
   }
 
   try {
+    // tenant_idがNULLの場合も含めて取得（マルチテナント移行前のデータ対応）
     const { data: responses, error } = await supabaseAdmin
       .from('form_responses')
       .select('*, users(id, display_name, line_user_id)')
-      .eq('tenant_id', tenant.id)
+      .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
       .order('created_at', { ascending: false })
 
     if (error) {
+      console.error('Supabase error:', error)
       throw error
     }
 
-    return res.status(200).json({ responses })
+    console.log(`Found ${responses?.length || 0} responses for tenant ${tenantKey}`)
+
+    return res.status(200).json({ responses: responses || [] })
   } catch (error) {
     console.error('Error fetching form responses:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' })
   }
 }

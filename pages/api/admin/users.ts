@@ -22,10 +22,11 @@ export default async function handler(
   }
 
   try {
+    // tenant_idがNULLの場合も含めて取得（マルチテナント移行前のデータ対応）
     let query = supabaseAdmin
       .from('users')
       .select('*')
-      .eq('tenant_id', tenant.id)
+      .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
       .order('created_at', { ascending: false })
 
     if (filter === 'active') {
@@ -37,12 +38,15 @@ export default async function handler(
     const { data: users, error } = await query
 
     if (error) {
+      console.error('Supabase error:', error)
       throw error
     }
 
-    return res.status(200).json({ users })
+    console.log(`Found ${users?.length || 0} users for tenant ${tenantKey}`)
+
+    return res.status(200).json({ users: users || [] })
   } catch (error) {
     console.error('Error fetching users:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' })
   }
 }

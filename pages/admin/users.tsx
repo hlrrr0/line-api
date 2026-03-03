@@ -118,6 +118,15 @@ export default function UsersPage() {
 
         {loading ? (
           <div style={styles.loading}>読み込み中...</div>
+        ) : users.length === 0 ? (
+          <div style={styles.emptyState}>
+            <p style={styles.emptyText}>ユーザーが登録されていません</p>
+            <p style={styles.emptyHint}>
+              ユーザーは以下の場合に自動登録されます：<br/>
+              • LINE公式アカウントを友達追加<br/>
+              • LIFFフォームを送信
+            </p>
+          </div>
         ) : (
           <div style={styles.tableContainer}>
             <table style={styles.table}>
@@ -259,5 +268,22 @@ const styles = {
   statusBlocked: {
     backgroundColor: '#ffebee',
     color: '#c62828',
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: '60px 20px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  },
+  emptyText: {
+    fontSize: '18px',
+    color: '#666',
+    marginBottom: '15px',
+  },
+  emptyHint: {
+    fontSize: '14px',
+    color: '#999',
+    lineHeight: '1.6',
   },
 }

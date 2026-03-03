@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 
 interface Tenant {
   id: string
@@ -23,6 +24,7 @@ interface FormResponse {
 }
 
 export default function ResponsesPage() {
+  const router = useRouter()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [responses, setResponses] = useState<FormResponse[]>([])
@@ -138,12 +140,18 @@ export default function ResponsesPage() {
 
         {loading ? (
           <div style={styles.loading}>読み込み中...</div>
+        ) : responses.length === 0 ? (
+          <div style={styles.emptyState}>
+            <p style={styles.emptyText}>回答データがありません</p>
+            <p style={styles.emptyHint}>
+              回答データは以下の場合に登録されます：<br/>
+              • ユーザーがLIFFフォームを送信<br/>
+              • フォームURL: /form/{'{'}tenantKey{'}'}
+            </p>
+          </div>
         ) : (
           <div style={styles.tableContainer}>
-            {responses.length === 0 ? (
-              <div style={styles.empty}>回答データがありません</div>
-            ) : (
-              <table style={styles.table}>
+            <table style={styles.table}>
                 <thead>
                   <tr>
                     <th style={styles.th}>回答日時</th>
@@ -156,7 +164,20 @@ export default function ResponsesPage() {
                 </thead>
                 <tbody>
                   {responses.map(response => (
-                    <tr key={response.id}>
+                    <tr 
+                      key={response.id}
+                      onClick={() => router.push(`/admin/responses/${response.id}`)}
+                      style={{
+                        ...styles.tableRow,
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }}
+                    >
                       <td style={styles.td}>
                         {new Date(response.created_at).toLocaleString('ja-JP')}
                       </td>
@@ -171,7 +192,6 @@ export default function ResponsesPage() {
                   ))}
                 </tbody>
               </table>
-            )}
           </div>
         )}
       </div>
@@ -239,6 +259,23 @@ const styles = {
     fontSize: '16px',
     color: '#666',
   },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: '60px 20px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  },
+  emptyText: {
+    fontSize: '18px',
+    color: '#666',
+    marginBottom: '15px',
+  },
+  emptyHint: {
+    fontSize: '14px',
+    color: '#999',
+    lineHeight: '1.6',
+  },
   empty: {
     textAlign: 'center' as const,
     padding: '40px',
@@ -254,6 +291,9 @@ const styles = {
   table: {
     width: '100%',
     borderCollapse: 'collapse' as const,
+  },
+  tableRow: {
+    transition: 'background-color 0.2s',
   },
   th: {
     padding: '16px',
