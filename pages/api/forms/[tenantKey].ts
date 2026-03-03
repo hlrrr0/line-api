@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getTenantByKey } from '@/lib/tenant'
 
 export default async function handler(
@@ -17,23 +18,31 @@ export default async function handler(
 
   try {
     const tenant = await getTenantByKey(tenantKey)
-
     if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found' })
     }
 
-    // セキュリティのため、トークンは返さない
-    return res.status(200).json({
-      tenant: {
-        id: tenant.id,
-        tenant_key: tenant.tenant_key,
-        name: tenant.name,
-        liff_id: tenant.liff_id,
-        is_active: tenant.is_active,
-      }
-    })
+    // アクティブなフォーム定義を取得（最新のものを1つ）
+    const { data: form, error } = await supabaseAdmin
+      .from('form_definitions')
+      .select('*')
+      .eq('tenant_id', tenant.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !form) {
+      // フォーム定義がない場合はデフォルトを返す
+      return res.status(200).json({
+        form: null,
+        useDefault: true
+      })
+    }
+
+    return res.status(200).json({ form })
   } catch (error) {
-    console.error('Error in tenant API:', error)
+    console.error('Error fetching form definition:', error)
     return res.status(500).json({ error: 'Internal server error' })
   }
 }

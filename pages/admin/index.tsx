@@ -79,6 +79,11 @@ export default function AdminDashboard() {
             <p style={styles.menuDescription}>ユーザー一覧・詳細確認</p>
           </Link>
 
+          <Link href="/admin/forms" style={styles.menuCard}>
+            <h3 style={styles.menuTitle}>📝 フォーム管理</h3>
+            <p style={styles.menuDescription}>フォーム作成・編集</p>
+          </Link>
+
           <Link href="/admin/delivery" style={styles.menuCard}>
             <h3 style={styles.menuTitle}>📨 メッセージ配信</h3>
             <p style={styles.menuDescription}>新規配信</p>
@@ -95,7 +100,7 @@ export default function AdminDashboard() {
           </Link>
 
           <Link href="/admin/responses" style={styles.menuCard}>
-            <h3 style={styles.menuTitle}>📝 回答データ</h3>
+            <h3 style={styles.menuTitle}>📄 回答データ</h3>
             <p style={styles.menuDescription}>フォーム回答閲覧</p>
           </Link>
         </div>

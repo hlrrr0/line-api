@@ -8,6 +8,26 @@ declare global {
   }
 }
 
+interface FormField {
+  id: string
+  type: string
+  label: string
+  placeholder?: string
+  required: boolean
+  options?: { value: string; label: string }[]
+  min?: number
+  max?: number
+  rows?: number
+  order: number
+}
+
+interface FormDefinition {
+  id: string
+  name: string
+  description: string
+  fields: FormField[]
+}
+
 export default function FormPage() {
   const router = useRouter()
   const { tenantKey } = router.query // URLパラメータからテナントキーを取得
@@ -15,16 +35,54 @@ export default function FormPage() {
   const [liffReady, setLiffReady] = useState(false)
   const [userId, setUserId] = useState('')
   const [tenantId, setTenantId] = useState('')
-  const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    gender: '',
-    interests: [] as string[],
-    email: '',
-    phone: '',
-  })
+  const [formDefinition, setFormDefinition] = useState<FormDefinition | null>(null)
+  const [useDefaultForm, setUseDefaultForm] = useState(false)
+  const [formData, setFormData] = useState<Record<string, any>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  // フォーム定義を取得
+  useEffect(() => {
+    if (!tenantKey) return
+
+    const fetchFormDefinition = async () => {
+      try {
+        const response = await fetch(`/api/forms/${tenantKey}`)
+        const data = await response.json()
+
+        if (data.useDefault) {
+          // デフォルトフォームを使用
+          setUseDefaultForm(true)
+          setFormData({
+            name: '',
+            age: '',
+            gender: '',
+            interests: [] as string[],
+            email: '',
+            phone: '',
+          })
+        } else {
+          // カスタムフォーム定義を使用
+          setFormDefinition(data.form)
+          const initialData: Record<string, any> = {}
+          data.form.fields.forEach((field: FormField) => {
+            if (field.type === 'checkbox') {
+              initialData[field.id] = []
+            } else {
+              initialData[field.id] = ''
+            }
+          })
+          setFormData(initialData)
+        }
+      } catch (error) {
+        console.error('Error fetching form definition:', error)
+        // エラー時はデフォルトフォームを使用
+        setUseDefaultForm(true)
+      }
+    }
+
+    fetchFormDefinition()
+  }, [tenantKey])
 
   useEffect(() => {
     if (!tenantKey) return
@@ -76,20 +134,169 @@ export default function FormPage() {
     }
   }, [tenantKey])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+  const handleInputChange = (fieldId: string, value: any) => {
+    setFormData({ ...formData, [fieldId]: value })
   }
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value, checked } = e.target
+  const handleCheckboxChange = (fieldId: string, value: string, checked: boolean) => {
+    const currentValues = formData[fieldId] || []
     if (checked) {
-      setFormData({ ...formData, interests: [...formData.interests, value] })
+      setFormData({ ...formData, [fieldId]: [...currentValues, value] })
     } else {
       setFormData({
         ...formData,
-        interests: formData.interests.filter(item => item !== value)
+        [fieldId]: currentValues.filter((item: string) => item !== value)
       })
+    }
+  }
+
+  const renderField = (field: FormField) => {
+    const value = formData[field.id]
+
+    switch (field.type) {
+      case 'text':
+      case 'email':
+      case 'tel':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <input
+              type={field.type}
+              value={value || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              required={field.required}
+              placeholder={field.placeholder}
+              style={styles.input}
+            />
+          </div>
+        )
+
+      case 'number':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <input
+              type="number"
+              value={value || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              required={field.required}
+              placeholder={field.placeholder}
+              min={field.min}
+              max={field.max}
+              style={styles.input}
+            />
+          </div>
+        )
+
+      case 'textarea':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <textarea
+              value={value || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              required={field.required}
+              placeholder={field.placeholder}
+              rows={field.rows || 3}
+              style={styles.textarea}
+            />
+          </div>
+        )
+
+      case 'date':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <input
+              type="date"
+              value={value || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              required={field.required}
+              style={styles.input}
+            />
+          </div>
+        )
+
+      case 'select':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <select
+              value={value || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              required={field.required}
+              style={styles.select}
+            >
+              <option value="">選択してください</option>
+              {field.options?.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+
+      case 'radio':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <div style={styles.radioGroup}>
+              {field.options?.map(option => (
+                <label key={option.value} style={styles.checkboxLabel}>
+                  <input
+                    type="radio"
+                    name={field.id}
+                    value={option.value}
+                    checked={value === option.value}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    required={field.required}
+                    style={styles.radio}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 'checkbox':
+        return (
+          <div key={field.id} style={styles.formGroup}>
+            <label style={styles.label}>
+              {field.label} {field.required && '*'}
+            </label>
+            <div style={styles.checkboxGroup}>
+              {field.options?.map(option => (
+                <label key={option.value} style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    value={option.value}
+                    checked={(value || []).includes(option.value)}
+                    onChange={(e) => handleCheckboxChange(field.id, option.value, e.target.checked)}
+                    style={styles.checkbox}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )
+
+      default:
+        return null
     }
   }
 
@@ -154,93 +361,101 @@ export default function FormPage() {
   return (
     <>
       <Head>
-        <title>アンケートフォーム</title>
+        <title>{formDefinition?.name || 'アンケートフォーム'}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       <div style={styles.container}>
-        <h1 style={styles.title}>アンケートフォーム</h1>
+        <h1 style={styles.title}>{formDefinition?.name || 'アンケートフォーム'}</h1>
+        {formDefinition?.description && (
+          <p style={styles.description}>{formDefinition.description}</p>
+        )}
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>お名前 *</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              style={styles.input}
-            />
-          </div>
+          {useDefaultForm ? (
+            // デフォルトフォーム（既存の6フィールド）
+            <>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>お名前 *</label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  style={styles.input}
+                />
+              </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>年齢 *</label>
-            <input
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleInputChange}
-              required
-              style={styles.input}
-            />
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>年齢 *</label>
+                <input
+                  type="number"
+                  value={formData.age || ''}
+                  onChange={(e) => handleInputChange('age', e.target.value)}
+                  required
+                  style={styles.input}
+                />
+              </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>性別 *</label>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleInputChange}
-              required
-              style={styles.select}
-            >
-              <option value="">選択してください</option>
-              <option value="male">男性</option>
-              <option value="female">女性</option>
-              <option value="other">その他</option>
-            </select>
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>性別 *</label>
+                <select
+                  value={formData.gender || ''}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  required
+                  style={styles.select}
+                >
+                  <option value="">選択してください</option>
+                  <option value="male">男性</option>
+                  <option value="female">女性</option>
+                  <option value="other">その他</option>
+                </select>
+              </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>興味のあるジャンル（複数選択可）</label>
-            <div style={styles.checkboxGroup}>
-              {['スポーツ', '音楽', '映画', '読書', '旅行', '料理'].map(interest => (
-                <label key={interest} style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    value={interest}
-                    checked={formData.interests.includes(interest)}
-                    onChange={handleCheckboxChange}
-                    style={styles.checkbox}
-                  />
-                  {interest}
-                </label>
-              ))}
-            </div>
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>興味のあるジャンル（複数選択可）</label>
+                <div style={styles.checkboxGroup}>
+                  {['スポーツ', '音楽', '映画', '読書', '旅行', '料理'].map(interest => (
+                    <label key={interest} style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        value={interest}
+                        checked={(formData.interests || []).includes(interest)}
+                        onChange={(e) => handleCheckboxChange('interests', interest, e.target.checked)}
+                        style={styles.checkbox}
+                      />
+                      {interest}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>メールアドレス</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              style={styles.input}
-            />
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>メールアドレス</label>
+                <input
+                  type="email"
+                  value={formData.email || ''}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  style={styles.input}
+                />
+              </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>電話番号</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              style={styles.input}
-            />
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>電話番号</label>
+                <input
+                  type="tel"
+                  value={formData.phone || ''}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+            </>
+          ) : (
+            // カスタムフォーム（動的レンダリング）
+            formDefinition?.fields
+              .sort((a, b) => a.order - b.order)
+              .map(field => renderField(field))
+          )}
 
           <button
             type="submit"
@@ -284,6 +499,11 @@ const styles = {
   title: {
     textAlign: 'center' as const,
     color: '#06c755',
+    marginBottom: '10px',
+  },
+  description: {
+    textAlign: 'center' as const,
+    color: '#666',
     marginBottom: '30px',
   },
   form: {
@@ -306,6 +526,14 @@ const styles = {
     border: '1px solid #ddd',
     borderRadius: '4px',
   },
+  textarea: {
+    padding: '12px',
+    fontSize: '16px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontFamily: 'inherit',
+    resize: 'vertical' as const,
+  },
   select: {
     padding: '12px',
     fontSize: '16px',
@@ -317,12 +545,21 @@ const styles = {
     flexDirection: 'column' as const,
     gap: '10px',
   },
+  radioGroup: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+  },
   checkboxLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
   },
   checkbox: {
+    width: '18px',
+    height: '18px',
+  },
+  radio: {
     width: '18px',
     height: '18px',
   },
