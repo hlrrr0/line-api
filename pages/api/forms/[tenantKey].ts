@@ -23,24 +23,24 @@ export default async function handler(
     }
 
     // アクティブなフォーム定義を取得（最新のものを1つ）
-    const { data: form, error } = await supabaseAdmin
+    const { data: forms, error } = await supabaseAdmin
       .from('form_definitions')
       .select('*')
       .eq('tenant_id', tenant.id)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
 
-    if (error || !form) {
-      // フォーム定義がない場合はデフォルトを返す
+    // テーブルが存在しない、またはフォームがない場合はデフォルトを返す
+    if (error || !forms || forms.length === 0) {
+      console.log('No form definition found, using default:', error?.message)
       return res.status(200).json({
         form: null,
         useDefault: true
       })
     }
 
-    return res.status(200).json({ form })
+    return res.status(200).json({ form: forms[0] })
   } catch (error) {
     console.error('Error fetching form definition:', error)
     return res.status(500).json({ error: 'Internal server error' })
