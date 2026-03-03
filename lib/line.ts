@@ -1,13 +1,22 @@
 import { Client, middleware, WebhookEvent, TextMessage, ClientConfig } from '@line/bot-sdk'
 
+const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN || ''
+const channelSecret = process.env.LINE_CHANNEL_SECRET || ''
+
+if (!channelAccessToken || !channelSecret) {
+  console.warn('LINE credentials not configured in environment variables')
+}
+
 const config: ClientConfig = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
-  channelSecret: process.env.LINE_CHANNEL_SECRET || '',
+  channelAccessToken,
+  channelSecret,
 }
 
 export const lineClient = new Client(config)
 
-export const lineMiddleware = middleware(config)
+export const lineMiddleware = middleware({
+  channelSecret,
+})
 
 // メッセージ送信ヘルパー
 export async function sendTextMessage(userId: string, text: string) {

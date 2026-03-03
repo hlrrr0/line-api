@@ -69,6 +69,11 @@ export default function AdminDashboard() {
         </div>
 
         <div style={styles.menuGrid}>
+          <Link href="/admin/tenants" style={styles.menuCard}>
+            <h3 style={styles.menuTitle}>🏢 テナント管理</h3>
+            <p style={styles.menuDescription}>アカウント追加・設定</p>
+          </Link>
+
           <Link href="/admin/users" style={styles.menuCard}>
             <h3 style={styles.menuTitle}>👥 ユーザー管理</h3>
             <p style={styles.menuDescription}>ユーザー一覧・詳細確認</p>

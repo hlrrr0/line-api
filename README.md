@@ -2,20 +2,24 @@
 
 LINE公式アカウントを統合した、フォームからの回答データ蓄積とセグメント配信が可能なシステム
 
+**✨ マルチテナント対応**: 1つのシステムで複数のLINE公式アカウントを管理可能
+
 ## システム構成
 
 - **フロントエンド**: Next.js + LIFF SDK
 - **バックエンド**: Vercel Serverless Functions
 - **データベース**: Supabase (PostgreSQL)
 - **LINE連携**: LINE Messaging API
+- **アーキテクチャ**: マルチテナント対応（複数アカウント管理）
 
 ## 機能
 
-1. LIFFフォーム（ユーザー入力）
-2. Webhook受信（友だち追加、メッセージ受信）
-3. セグメント配信
-4. 配信履歴管理
-5. 管理画面
+1. **マルチテナント管理** - 複数のLINE公式アカウントを一元管理
+2. LIFFフォーム（ユーザー入力）
+3. Webhook受信（友だち追加、メッセージ受信）
+4. セグメント配信
+5. 配信履歴管理
+6. 管理画面
 
 ## セットアップ
 
@@ -73,7 +77,24 @@ vercel
 
 ## LINE設定
 
+### シングルテナント（1つのアカウントのみ）
+
 1. LINE Developersコンソールでチャネル作成
 2. Messaging API有効化
 3. Webhook URLを設定: `https://your-domain.vercel.app/api/webhook`
 4. LIFF アプリ追加: Endpoint URL `https://your-domain.vercel.app/form`
+
+### マルチテナント（複数のアカウント）
+
+1. 管理画面（`/admin/tenants`）でテナントを作成
+2. 各テナントのWebhook URL: `https://your-domain.vercel.app/api/webhook/[テナントキー]`
+3. 各テナントのLIFF URL: `https://your-domain.vercel.app/form/[テナントキー]`
+
+詳細は [MULTITENANT.md](MULTITENANT.md) を参照してください。
+
+## ドキュメント
+
+- **[README.md](README.md)** - プロジェクト概要
+- **[SETUP.md](SETUP.md)** - 詳細なセットアップ手順
+- **[MULTITENANT.md](MULTITENANT.md)** - マルチテナント対応ガイド
+- **[API_SPEC.md](API_SPEC.md)** - API仕様書
