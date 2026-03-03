@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { supabase } from '@/lib/supabase'
 
 interface Stats {
   totalUsers: number
@@ -38,6 +40,7 @@ const menuGroups = [
 ]
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     activeUsers: 0,
@@ -54,6 +57,11 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+  }
+
   return (
     <>
       <Head>
@@ -66,6 +74,7 @@ export default function AdminDashboard() {
             <span style={styles.logo}>LINE</span>
             <h1 style={styles.title}>配信システム 管理画面</h1>
           </div>
+          <button onClick={handleLogout} style={styles.logoutButton}>ログアウト</button>
         </header>
 
         {/* サマリー */}
@@ -122,6 +131,18 @@ const styles = {
     marginBottom: '32px',
     paddingBottom: '20px',
     borderBottom: '2px solid #06c755',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logoutButton: {
+    padding: '8px 16px',
+    background: 'transparent',
+    border: '1px solid #ccc',
+    borderRadius: '6px',
+    fontSize: '13px',
+    color: '#666',
+    cursor: 'pointer',
   },
   headerInner: {
     display: 'flex',
