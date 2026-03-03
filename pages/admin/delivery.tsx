@@ -8,8 +8,15 @@ interface Tenant {
   name: string
 }
 
+interface Segment {
+  id: string
+  name: string
+  description: string
+}
+
 export default function DeliveryPage() {
   const [tenants, setTenants] = useState<Tenant[]>([])
+  const [segments, setSegments] = useState<Segment[]>([])
   const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [messageText, setMessageText] = useState('')
   const [segmentId, setSegmentId] = useState('')
@@ -19,6 +26,12 @@ export default function DeliveryPage() {
   useEffect(() => {
     fetchTenants()
   }, [])
+
+  useEffect(() => {
+    if (selectedTenantKey) {
+      fetchSegments()
+    }
+  }, [selectedTenantKey])
 
   const fetchTenants = async () => {
     try {
@@ -30,6 +43,16 @@ export default function DeliveryPage() {
       }
     } catch (error) {
       console.error('Error fetching tenants:', error)
+    }
+  }
+
+  const fetchSegments = async () => {
+    try {
+      const response = await fetch(`/api/segments?tenantKey=${selectedTenantKey}`)
+      const data = await response.json()
+      setSegments(data.segments || [])
+    } catch (error) {
+      console.error('Error fetching segments:', error)
     }
   }
 
@@ -128,8 +151,11 @@ export default function DeliveryPage() {
                   style={styles.select}
                 >
                   <option value="">全ユーザー</option>
-                  <option value="segment1">セグメント1（例）</option>
-                  <option value="segment2">セグメント2（例）</option>
+                  {segments.map(segment => (
+                    <option key={segment.id} value={segment.id}>
+                      {segment.name}
+                    </option>
+                  ))}
                 </select>
                 <small style={styles.helpText}>
                   セグメントを選択しない場合、全ユーザーに配信されます

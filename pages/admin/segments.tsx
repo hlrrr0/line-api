@@ -10,7 +10,15 @@ interface Segment {
   created_at: string
 }
 
+interface Tenant {
+  id: string
+  tenant_key: string
+  name: string
+}
+
 export default function SegmentsPage() {
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [segments, setSegments] = useState<Segment[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -23,12 +31,32 @@ export default function SegmentsPage() {
   })
 
   useEffect(() => {
-    fetchSegments()
+    fetchTenants()
   }, [])
 
-  const fetchSegments = async () => {
+  useEffect(() => {
+    if (selectedTenantKey) {
+      fetchSegments()
+    }
+  }, [selectedTenantKey])
+
+  const fetchTenants = async () => {
     try {
-      const response = await fetch('/api/segments')
+      const response = await fetch('/api/admin/tenants')
+      const data = await response.json()
+      setTenants(data.tenants || [])
+      if (data.tenants && data.tenants.length > 0) {
+        setSelectedTenantKey(data.tenants[0].tenant_key)
+      }
+    } catch (error) {
+      console.error('Error fetching tenants:', error)
+    }
+  }
+
+  const fetchSegments = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/segments?tenantKey=${selectedTenantKey}`)
       const data = await response.json()
       setSegments(data.segments || [])
     } catch (error) {
@@ -60,6 +88,7 @@ export default function SegmentsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          tenantKey: selectedTenantKey,
           name: formData.name,
           description: formData.description,
           conditions,
@@ -118,6 +147,21 @@ export default function SegmentsPage() {
             </button>
           </div>
         </header>
+
+        <div style={styles.tenantSelector}>
+          <label style={styles.label}>テナント選択:</label>
+          <select
+            value={selectedTenantKey}
+            onChange={(e) => setSelectedTenantKey(e.target.value)}
+            style={styles.select}
+          >
+            {tenants.map(tenant => (
+              <option key={tenant.id} value={tenant.tenant_key}>
+                {tenant.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {showForm && (
           <div style={styles.formCard}>
@@ -257,6 +301,19 @@ const styles = {
     fontSize: '28px',
     color: '#333',
     margin: 0,
+  },
+  tenantSelector: {
+    marginBottom: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  select: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    minWidth: '200px',
   },
   createButton: {
     padding: '12px 24px',

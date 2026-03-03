@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getTenantByKey } from '@/lib/tenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -7,10 +8,22 @@ export default async function handler(
 ) {
   if (req.method === 'GET') {
     // セグメント一覧取得
+    const { tenantKey } = req.query
+
+    if (!tenantKey || typeof tenantKey !== 'string') {
+      return res.status(400).json({ error: 'Tenant key is required' })
+    }
+
+    const tenant = await getTenantByKey(tenantKey)
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' })
+    }
+
     try {
       const { data: segments, error } = await supabaseAdmin
         .from('segments')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -24,16 +37,22 @@ export default async function handler(
     }
   } else if (req.method === 'POST') {
     // セグメント作成
-    const { name, description, conditions } = req.body
+    const { tenantKey, name, description, conditions } = req.body
 
-    if (!name || !conditions) {
+    if (!tenantKey || !name || !conditions) {
       return res.status(400).json({ error: 'Missing required fields' })
+    }
+
+    const tenant = await getTenantByKey(tenantKey)
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' })
     }
 
     try {
       const { data: segment, error } = await supabaseAdmin
         .from('segments')
         .insert({
+          tenant_id: tenant.id,
           name,
           description: description || '',
           conditions,
