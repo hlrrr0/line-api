@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getAllTenants, createTenant } from '@/lib/tenant'
+import { getAllTenants, createTenant, updateTenant } from '@/lib/tenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -62,8 +62,33 @@ export default async function handler(
     } catch (error) {
       console.error('Error creating tenant:', error)
       return res.status(500).json({ error: 'Internal server error' })
+    }  } else if (req.method === 'PUT') {
+    // テナント更新
+    const { id, ...updateData } = req.body
+
+    if (!id) {
+      return res.status(400).json({ error: 'Tenant ID is required' })
     }
-  } else {
+
+    // 空の値を除外（secretとtokenは空の場合は更新しない）
+    const filteredData: any = {}
+    Object.keys(updateData).forEach(key => {
+      const value = updateData[key]
+      if (value !== '' && value !== null && value !== undefined) {
+        filteredData[key] = value
+      }
+    })
+
+    try {
+      const tenant = await updateTenant(id, filteredData)
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant not found' })
+      }
+      return res.status(200).json({ tenant })
+    } catch (error) {
+      console.error('Error updating tenant:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }  } else {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 }

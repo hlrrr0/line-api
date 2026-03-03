@@ -16,6 +16,7 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null)
   const [formData, setFormData] = useState({
     tenant_key: '',
     name: '',
@@ -45,12 +46,18 @@ export default function TenantsPage() {
     e.preventDefault()
 
     try {
-      const response = await fetch('/api/admin/tenants', {
-        method: 'POST',
+      const url = '/api/admin/tenants'
+      const method = editingTenant ? 'PUT' : 'POST'
+      const body = editingTenant
+        ? { id: editingTenant.id, ...formData }
+        : formData
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
@@ -63,16 +70,43 @@ export default function TenantsPage() {
           liff_id: '',
         })
         setShowForm(false)
+        setEditingTenant(null)
         fetchTenants()
-        alert('テナントを作成しました')
+        alert(editingTenant ? 'テナントを更新しました' : 'テナントを作成しました')
       } else {
         const error = await response.json()
         alert(`エラー: ${error.error}`)
       }
     } catch (error) {
-      console.error('Error creating tenant:', error)
+      console.error('Error saving tenant:', error)
       alert('エラーが発生しました')
     }
+  }
+
+  const handleEdit = (tenant: Tenant) => {
+    setEditingTenant(tenant)
+    setFormData({
+      tenant_key: tenant.tenant_key,
+      name: tenant.name,
+      line_channel_id: tenant.line_channel_id,
+      line_channel_secret: '',
+      line_channel_access_token: '',
+      liff_id: tenant.liff_id || '',
+    })
+    setShowForm(true)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTenant(null)
+    setFormData({
+      tenant_key: '',
+      name: '',
+      line_channel_id: '',
+      line_channel_secret: '',
+      line_channel_access_token: '',
+      liff_id: '',
+    })
+    setShowForm(false)
   }
 
   const copyWebhookUrl = (tenantKey: string) => {
@@ -109,7 +143,7 @@ export default function TenantsPage() {
 
         {showForm && (
           <div style={styles.formCard}>
-            <h2 style={styles.cardTitle}>新規テナント作成</h2>
+            <h2 style={styles.cardTitle}>{editingTenant ? 'テナント編集' : '新規テナント作成'}</h2>
             <form onSubmit={handleSubmit} style={styles.form}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>テナントキー（URL用） *</label>
@@ -118,11 +152,12 @@ export default function TenantsPage() {
                   value={formData.tenant_key}
                   onChange={(e) => setFormData({ ...formData, tenant_key: e.target.value })}
                   required
+                  disabled={!!editingTenant}
                   placeholder="例: account-a"
                   pattern="[a-z0-9\-]+"
-                  style={styles.input}
+                  style={editingTenant ? {...styles.input, ...styles.inputDisabled} : styles.input}
                 />
-                <small style={styles.helpText}>半角英小文字・数字・ハイフンのみ</small>
+                <small style={styles.helpText}>半角英小文字・数字・ハイフンのみ{editingTenant && ' (変更不可)'}</small>
               </div>
 
               <div style={styles.formGroup}>
@@ -149,22 +184,24 @@ export default function TenantsPage() {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>LINE Channel Secret *</label>
+                <label style={styles.label}>LINE Channel Secret {editingTenant ? '' : '*'}</label>
                 <input
                   type="text"
                   value={formData.line_channel_secret}
                   onChange={(e) => setFormData({ ...formData, line_channel_secret: e.target.value })}
-                  required
+                  required={!editingTenant}
+                  placeholder={editingTenant ? '変更しない場合は空欄' : ''}
                   style={styles.input}
                 />
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>LINE Channel Access Token *</label>
+                <label style={styles.label}>LINE Channel Access Token {editingTenant ? '' : '*'}</label>
                 <textarea
                   value={formData.line_channel_access_token}
                   onChange={(e) => setFormData({ ...formData, line_channel_access_token: e.target.value })}
-                  required
+                  required={!editingTenant}
+                  placeholder={editingTenant ? '変更しない場合は空欄' : ''}
                   rows={3}
                   style={styles.textarea}
                 />
@@ -181,9 +218,16 @@ export default function TenantsPage() {
                 />
               </div>
 
-              <button type="submit" style={styles.button}>
-                作成する
-              </button>
+              <div style={{display: 'flex', gap: '10px'}}>
+                <button type="submit" style={styles.button}>
+                  {editingTenant ? '更新する' : '作成する'}
+                </button>
+                {editingTenant && (
+                  <button type="button" onClick={handleCancelEdit} style={styles.cancelButton}>
+                    キャンセル
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         )}
@@ -221,6 +265,15 @@ export default function TenantsPage() {
                         <strong>LIFF ID:</strong> {tenant.liff_id}
                       </div>
                     )}
+                  </div>
+
+                  <div style={styles.tenantActions}>
+                    <button
+                      onClick={() => handleEdit(tenant)}
+                      style={styles.editButton}
+                    >
+                      ✏️ 編集
+                    </button>
                   </div>
 
                   <div style={styles.urlSection}>
@@ -413,6 +466,33 @@ const styles = {
   },
   infoRow: {
     marginBottom: '8px',
+  },
+  tenantActions: {
+    marginBottom: '15px',
+  },
+  editButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    backgroundColor: '#2196F3',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  cancelButton: {
+    padding: '16px',
+    fontSize: '16px',
+    fontWeight: 'bold' as const,
+    color: '#666',
+    backgroundColor: '#f5f5f5',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  inputDisabled: {
+    backgroundColor: '#f5f5f5',
+    color: '#999',
+    cursor: 'not-allowed',
   },
   urlSection: {
     backgroundColor: '#f5f5f5',
