@@ -81,7 +81,12 @@ export default function AdminDashboard() {
 
           <Link href="/admin/delivery" style={styles.menuCard}>
             <h3 style={styles.menuTitle}>📨 メッセージ配信</h3>
-            <p style={styles.menuDescription}>新規配信・配信履歴</p>
+            <p style={styles.menuDescription}>新規配信</p>
+          </Link>
+
+          <Link href="/admin/delivery/history" style={styles.menuCard}>
+            <h3 style={styles.menuTitle}>📋 配信履歴</h3>
+            <p style={styles.menuDescription}>過去の配信確認</p>
           </Link>
 
           <Link href="/admin/segments" style={styles.menuCard}>

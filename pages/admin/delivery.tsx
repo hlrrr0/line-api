@@ -119,7 +119,12 @@ export default function DeliveryPage() {
       <div style={styles.container}>
         <header style={styles.header}>
           <Link href="/admin" style={styles.backLink}>← 管理画面に戻る</Link>
-          <h1 style={styles.title}>メッセージ配信</h1>
+          <div style={styles.headerTop}>
+            <h1 style={styles.title}>メッセージ配信</h1>
+            <Link href="/admin/delivery/history" style={styles.historyLink}>
+              📋 配信履歴を見る
+            </Link>
+          </div>
         </header>
 
         <div style={styles.content}>
@@ -207,14 +212,6 @@ export default function DeliveryPage() {
               </div>
             )}
           </div>
-
-          <div style={styles.linkCard}>
-            <h3 style={styles.cardTitle}>配信履歴</h3>
-            <p>過去の配信履歴を確認できます</p>
-            <Link href="/admin/delivery/history" style={styles.linkButton}>
-              配信履歴を見る →
-            </Link>
-          </div>
         </div>
       </div>
     </>
@@ -238,10 +235,24 @@ const styles = {
     display: 'inline-block',
     marginBottom: '10px',
   },
+  headerTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: {
     fontSize: '28px',
     color: '#333',
     margin: 0,
+  },
+  historyLink: {
+    padding: '10px 20px',
+    backgroundColor: '#06c755',
+    color: '#fff',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    fontSize: '14px',
+    fontWeight: 'bold' as const,
   },
   content: {
     display: 'grid',
@@ -253,13 +264,6 @@ const styles = {
     padding: '30px',
     borderRadius: '8px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  },
-  linkCard: {
-    backgroundColor: '#fff',
-    padding: '30px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    height: 'fit-content',
   },
   cardTitle: {
     fontSize: '20px',
@@ -313,15 +317,6 @@ const styles = {
   buttonDisabled: {
     backgroundColor: '#ccc',
     cursor: 'not-allowed',
-  },
-  linkButton: {
-    display: 'inline-block',
-    padding: '12px 24px',
-    backgroundColor: '#06c755',
-    color: '#fff',
-    textDecoration: 'none',
-    borderRadius: '4px',
-    marginTop: '10px',
   },
   resultBox: {
     marginTop: '20px',
