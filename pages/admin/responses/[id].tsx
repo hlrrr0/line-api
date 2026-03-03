@@ -18,11 +18,24 @@ interface FormResponse {
   users?: User
 }
 
+interface FormField {
+  id: string
+  label: string
+  type: string
+}
+
+interface FormDefinition {
+  id: string
+  name: string
+  fields: FormField[]
+}
+
 export default function ResponseDetailPage() {
   const router = useRouter()
   const { id } = router.query
 
   const [response, setResponse] = useState<FormResponse | null>(null)
+  const [formDefinition, setFormDefinition] = useState<FormDefinition | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -39,6 +52,7 @@ export default function ResponseDetailPage() {
       
       if (res.ok) {
         setResponse(data.response)
+        setFormDefinition(data.formDefinition)
       } else {
         console.error('Error:', data.error)
       }
@@ -47,6 +61,15 @@ export default function ResponseDetailPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const getFieldLabel = (fieldId: string): string => {
+    if (!formDefinition || !formDefinition.fields) {
+      return fieldId
+    }
+    
+    const field = formDefinition.fields.find((f: FormField) => f.id === fieldId)
+    return field ? field.label : fieldId
   }
 
   const renderFieldValue = (value: any): string => {
@@ -137,7 +160,7 @@ export default function ResponseDetailPage() {
                 <tbody>
                   {Object.entries(response.form_data).map(([key, value]) => (
                     <tr key={key} style={styles.responseRow}>
-                      <td style={styles.labelCell}>{key}</td>
+                      <td style={styles.labelCell}>{getFieldLabel(key)}</td>
                       <td style={styles.valueCell}>
                         {renderFieldValue(value)}
                       </td>

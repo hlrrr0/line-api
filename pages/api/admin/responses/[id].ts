@@ -31,7 +31,25 @@ export default async function handler(
       return res.status(404).json({ error: 'Response not found' })
     }
 
-    return res.status(200).json({ response })
+    // フォーム定義を取得（ラベル表示用）
+    let formDefinition = null
+    if (response.tenant_id) {
+      const { data: formDef } = await supabaseAdmin
+        .from('form_definitions')
+        .select('*')
+        .eq('tenant_id', response.tenant_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      formDefinition = formDef
+    }
+
+    return res.status(200).json({ 
+      response,
+      formDefinition 
+    })
   } catch (error) {
     console.error('Error fetching response detail:', error)
     return res.status(500).json({ 
