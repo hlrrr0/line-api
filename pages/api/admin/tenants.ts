@@ -10,7 +10,7 @@ export default async function handler(
     try {
       const tenants = await getAllTenants()
 
-      // セキュリティのため、トークンとシークレットは返さない
+      // セキュリティのため、トークンとシークレットの値は返さない（設定済みかどうかのみ返す）
       const safeTenants = tenants.map(t => ({
         id: t.id,
         tenant_key: t.tenant_key,
@@ -18,6 +18,7 @@ export default async function handler(
         line_channel_id: t.line_channel_id,
         liff_id: t.liff_id,
         is_active: t.is_active,
+        has_credentials: !!(t.line_channel_access_token && t.line_channel_secret),
         created_at: t.created_at,
         updated_at: t.updated_at,
       }))

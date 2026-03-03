@@ -36,7 +36,14 @@ export default async function handler(
 
     console.log(`Found ${responses?.length || 0} responses for tenant ${tenantKey}`)
 
-    return res.status(200).json({ responses: responses || [] })
+    // フォーム定義を取得（一覧表示用）
+    const { data: formDefinitions } = await supabaseAdmin
+      .from('form_definitions')
+      .select('*')
+      .eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false })
+
+    return res.status(200).json({ responses: responses || [], formDefinitions: formDefinitions || [] })
   } catch (error) {
     console.error('Error fetching form responses:', error)
     return res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' })

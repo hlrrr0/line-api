@@ -42,11 +42,11 @@ export default async function handler(
 
       targetUsers = await getUsersBySegment(segment.conditions, tenant.id)
     } else {
-      // 全体配信
+      // 全体配信（tenant_id が null の旧データも含む）
       const { data: users } = await supabaseAdmin
         .from('users')
         .select('*')
-        .eq('tenant_id', tenant.id)
+        .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
         .eq('is_blocked', false)
 
       targetUsers = users || []
@@ -120,42 +120,36 @@ async function getUsersBySegment(conditions: any, tenantId: string): Promise<any
   let query = supabaseAdmin
     .from('users')
     .select('*')
-    .eq('tenant_id', tenantId)
+    .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
     .eq('is_blocked', false)
 
-  // タグによる絞り込み
-  if (conditions.tags && conditions.tags.length > 0) {
-    const { data: userTags } = await supabaseAdmin
-      .from('user_tags')
-      .select('user_id, tags(name)')
-      .eq('tenant_id', tenantId)
-      .in('tags.name', conditions.tags)
-
-    if (userTags) {
-      const userIds = userTags.map(ut => ut.user_id)
-      query = query.in('id', userIds)
-    }
-  }
-
-  // 回答内容による絞り込み（例：年齢範囲）
-  if (conditions.ageMin || conditions.ageMax) {
+  // フォーム回答フィールドによる絞り込み
+  if (conditions.formFields && conditions.formFields.length > 0) {
     const { data: responses } = await supabaseAdmin
       .from('form_responses')
       .select('user_id, form_data')
-      .eq('tenant_id', tenantId)
+      .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
 
     if (responses) {
-      const filteredUserIds = responses
-        .filter(r => {
-          const age = parseInt(r.form_data.age)
-          if (isNaN(age)) return false
-          if (conditions.ageMin && age < conditions.ageMin) return false
-          if (conditions.ageMax && age > conditions.ageMax) return false
-          return true
-        })
+      const matchingUserIds = responses
+        .filter(r =>
+          conditions.formFields.every((fc: any) => {
+            const val = r.form_data?.[fc.fieldId]
+            if (val === undefined || val === null) return false
+            switch (fc.operator) {
+              case 'eq':       return String(val) === String(fc.value)
+              case 'neq':      return String(val) !== String(fc.value)
+              case 'includes': return Array.isArray(val) && val.includes(fc.value)
+              case 'gte':      return Number(val) >= Number(fc.value)
+              case 'lte':      return Number(val) <= Number(fc.value)
+              case 'contains': return String(val).includes(String(fc.value))
+              default:         return true
+            }
+          })
+        )
         .map(r => r.user_id)
 
-      query = query.in('id', filteredUserIds)
+      query = query.in('id', matchingUserIds)
     }
   }
 

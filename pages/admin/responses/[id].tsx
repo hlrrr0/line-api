@@ -22,6 +22,7 @@ interface FormField {
   id: string
   label: string
   type: string
+  options?: { value: string; label: string }[]
 }
 
 interface FormDefinition {
@@ -53,6 +54,8 @@ export default function ResponseDetailPage() {
       if (res.ok) {
         setResponse(data.response)
         setFormDefinition(data.formDefinition)
+        console.log('Response:', data.response)
+        console.log('Form definition:', data.formDefinition)
       } else {
         console.error('Error:', data.error)
       }
@@ -64,22 +67,62 @@ export default function ResponseDetailPage() {
   }
 
   const getFieldLabel = (fieldId: string): string => {
-    if (!formDefinition || !formDefinition.fields) {
-      return fieldId
+    // フォーム定義がある場合、ラベルを検索
+    if (formDefinition && formDefinition.fields && Array.isArray(formDefinition.fields)) {
+      const field = formDefinition.fields.find((f: FormField) => f.id === fieldId)
+      if (field && field.label) {
+        return field.label
+      }
     }
     
-    const field = formDefinition.fields.find((f: FormField) => f.id === fieldId)
-    return field ? field.label : fieldId
+    // デフォルトフォームの場合、わかりやすい日本語に変換
+    const defaultLabels: Record<string, string> = {
+      'name': 'お名前',
+      'age': '年齢',
+      'gender': '性別',
+      'interests': '興味のあるジャンル',
+      'email': 'メールアドレス',
+      'phone': '電話番号',
+    }
+    
+    if (defaultLabels[fieldId]) {
+      return defaultLabels[fieldId]
+    }
+    
+    // どちらにも該当しない場合、フィールドIDをそのまま表示
+    return fieldId
   }
 
-  const renderFieldValue = (value: any): string => {
+  const getFieldOptions = (fieldId: string): { value: string; label: string }[] | undefined => {
+    if (formDefinition?.fields && Array.isArray(formDefinition.fields)) {
+      const field = formDefinition.fields.find((f: FormField) => f.id === fieldId)
+      return field?.options
+    }
+    return undefined
+  }
+
+  const renderFieldValue = (fieldId: string, value: any): string => {
+    const options = getFieldOptions(fieldId)
+
     if (Array.isArray(value)) {
+      if (options) {
+        return value.map(v => {
+          const opt = options.find(o => o.value === String(v))
+          return opt ? opt.label : String(v)
+        }).join(', ')
+      }
       return value.join(', ')
     }
+
+    if (options) {
+      const opt = options.find(o => o.value === String(value))
+      if (opt) return opt.label
+    }
+
     if (typeof value === 'object' && value !== null) {
       return JSON.stringify(value, null, 2)
     }
-    return String(value || '-')
+    return String(value ?? '-')
   }
 
   if (loading) {
@@ -162,7 +205,7 @@ export default function ResponseDetailPage() {
                     <tr key={key} style={styles.responseRow}>
                       <td style={styles.labelCell}>{getFieldLabel(key)}</td>
                       <td style={styles.valueCell}>
-                        {renderFieldValue(value)}
+                        {renderFieldValue(key, value)}
                       </td>
                     </tr>
                   ))}

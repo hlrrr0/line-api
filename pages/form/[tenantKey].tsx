@@ -305,7 +305,7 @@ export default function FormPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/form/submit', {
+      const response = await fetch('/api/form/submit-multitenant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

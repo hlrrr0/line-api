@@ -23,11 +23,24 @@ interface FormResponse {
   users?: User
 }
 
+interface FormField {
+  id: string
+  label: string
+  type: string
+  options?: { value: string; label: string }[]
+}
+
+interface FormDefinition {
+  id: string
+  fields: FormField[]
+}
+
 export default function ResponsesPage() {
   const router = useRouter()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [selectedTenantKey, setSelectedTenantKey] = useState('')
   const [responses, setResponses] = useState<FormResponse[]>([])
+  const [formDefinitions, setFormDefinitions] = useState<FormDefinition[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -59,11 +72,39 @@ export default function ResponsesPage() {
       const response = await fetch(`/api/admin/responses?tenantKey=${selectedTenantKey}`)
       const data = await response.json()
       setResponses(data.responses || [])
+      setFormDefinitions(data.formDefinitions || [])
     } catch (error) {
       console.error('Error fetching responses:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // form_data のキーと一致するフォーム定義を探す
+  const findFormDefinition = (formData: any): FormDefinition | undefined => {
+    const keys = Object.keys(formData || {})
+    return formDefinitions
+      .map(def => {
+        const fieldIds = def.fields.map(f => f.id)
+        const matches = keys.filter(k => fieldIds.includes(k)).length
+        return { def, matches }
+      })
+      .filter(({ matches }) => matches > 0)
+      .sort((a, b) => b.matches - a.matches)[0]?.def
+  }
+
+  // ラベルに一致するフィールドの値を取得（選択肢はラベルに変換）
+  const getValueByLabel = (formData: any, labelKeyword: string): string => {
+    const def = findFormDefinition(formData)
+    if (!def) return '-'
+    const field = def.fields.find(f => f.label.includes(labelKeyword))
+    if (!field) return '-'
+    const value = formData[field.id]
+    if (value === undefined || value === null || value === '') return '-'
+    if (Array.isArray(value)) {
+      return value.map(v => field.options?.find(o => o.value === String(v))?.label ?? String(v)).join(', ')
+    }
+    return field.options?.find(o => o.value === String(value))?.label ?? String(value)
   }
 
   const exportCSV = () => {
@@ -73,17 +114,15 @@ export default function ResponsesPage() {
     }
 
     // CSVヘッダー
-    const headers = ['回答日時', 'ユーザー名', 'LINE ID', '名前', '年齢', '性別', 'メールアドレス']
-    
+    const headers = ['回答日時', 'ユーザー名', 'LINE ID', '年齢', '希望勤務エリア']
+
     // CSVデータ
     const csvData = responses.map(response => [
       new Date(response.created_at).toLocaleString('ja-JP'),
       response.users?.display_name || '',
       response.users?.line_user_id || '',
-      response.form_data.name || '',
-      response.form_data.age || '',
-      response.form_data.gender || '',
-      response.form_data.email || '',
+      getValueByLabel(response.form_data, '年齢'),
+      getValueByLabel(response.form_data, 'エリア'),
     ])
 
     // CSV文字列を作成
@@ -156,10 +195,8 @@ export default function ResponsesPage() {
                   <tr>
                     <th style={styles.th}>回答日時</th>
                     <th style={styles.th}>ユーザー名</th>
-                    <th style={styles.th}>名前</th>
                     <th style={styles.th}>年齢</th>
-                    <th style={styles.th}>性別</th>
-                    <th style={styles.th}>メールアドレス</th>
+                    <th style={styles.th}>希望勤務エリア</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -184,10 +221,8 @@ export default function ResponsesPage() {
                       <td style={styles.td}>
                         {response.users?.display_name || '-'}
                       </td>
-                      <td style={styles.td}>{response.form_data.name || '-'}</td>
-                      <td style={styles.td}>{response.form_data.age || '-'}</td>
-                      <td style={styles.td}>{response.form_data.gender || '-'}</td>
-                      <td style={styles.td}>{response.form_data.email || '-'}</td>
+                      <td style={styles.td}>{getValueByLabel(response.form_data, '年齢')}</td>
+                      <td style={styles.td}>{getValueByLabel(response.form_data, 'エリア')}</td>
                     </tr>
                   ))}
                 </tbody>

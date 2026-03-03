@@ -9,6 +9,7 @@ interface Tenant {
   line_channel_id: string
   liff_id?: string
   is_active: boolean
+  has_credentials: boolean
   created_at: string
 }
 
@@ -144,6 +145,14 @@ export default function TenantsPage() {
         {showForm && (
           <div style={styles.formCard}>
             <h2 style={styles.cardTitle}>{editingTenant ? 'テナント編集' : '新規テナント作成'}</h2>
+            {editingTenant && (
+              <div style={styles.credentialNotice}>
+                <span style={editingTenant.has_credentials ? styles.credentialSet : styles.credentialUnset}>
+                  {editingTenant.has_credentials ? '✓ LINE認証情報は設定済みです' : '⚠ LINE認証情報が未設定です'}
+                </span>
+                <span style={styles.credentialHint}>（セキュリティのため値は表示されません。変更する場合のみ入力してください）</span>
+              </div>
+            )}
             <form onSubmit={handleSubmit} style={styles.form}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>テナントキー（URL用） *</label>
@@ -533,5 +542,29 @@ const styles = {
   tenantDate: {
     fontSize: '12px',
     color: '#999',
+  },
+  credentialNotice: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 14px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '6px',
+    marginBottom: '20px',
+    flexWrap: 'wrap' as const,
+  },
+  credentialSet: {
+    fontSize: '14px',
+    fontWeight: 'bold' as const,
+    color: '#2e7d32',
+  },
+  credentialUnset: {
+    fontSize: '14px',
+    fontWeight: 'bold' as const,
+    color: '#c62828',
+  },
+  credentialHint: {
+    fontSize: '12px',
+    color: '#888',
   },
 }

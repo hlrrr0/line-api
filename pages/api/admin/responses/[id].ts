@@ -32,18 +32,33 @@ export default async function handler(
     }
 
     // フォーム定義を取得（ラベル表示用）
+    // form_data のキーと fields の id が最も多く一致するフォームを選ぶ
     let formDefinition = null
-    if (response.tenant_id) {
-      const { data: formDef } = await supabaseAdmin
+    const formDataKeys = Object.keys(response.form_data || {})
+
+    if (formDataKeys.length > 0) {
+      const query = supabaseAdmin
         .from('form_definitions')
         .select('*')
-        .eq('tenant_id', response.tenant_id)
-        .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      
-      formDefinition = formDef
+
+      if (response.tenant_id) {
+        query.eq('tenant_id', response.tenant_id)
+      }
+
+      const { data: allForms } = await query
+
+      if (allForms && allForms.length > 0) {
+        const scored = allForms.map(form => {
+          const fieldIds = (form.fields || []).map((f: { id: string }) => f.id)
+          const matches = formDataKeys.filter(k => fieldIds.includes(k)).length
+          return { form, matches }
+        })
+        scored.sort((a, b) => b.matches - a.matches)
+        if (scored[0].matches > 0) {
+          formDefinition = scored[0].form
+        }
+      }
     }
 
     return res.status(200).json({ 
