@@ -22,10 +22,21 @@ export default function ChatPage() {
     if (!tenantKey) return
     fetch(`/api/admin/messages?tenantKey=${tenantKey}`)
       .then(r => r.json())
-      .then(data => setInbox(data.inbox || []))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [tenantKey])
+      .then(data => {
+        const items = data.inbox || []
+        if (items.length > 0) {
+          // 最新のトークがあるユーザーの詳細画面に直接遷移
+          router.replace(`/admin/${tenantKey}/users/${items[0].user_id}`)
+        } else {
+          setInbox(items)
+          setLoading(false)
+        }
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [tenantKey, router])
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)

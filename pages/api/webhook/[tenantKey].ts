@@ -166,21 +166,21 @@ async function handleMessage(event: MessageEvent, tenant: any) {
   if (event.message.type === 'text') {
     const userMessage = event.message.text
 
-    // 受信メッセージを DB に保存
-    const { error: msgError } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        tenant_id: tenant.id,
-        user_id: internalUserId,
-        line_user_id: lineUserId,
-        direction: 'received',
-        message_type: 'text',
-        content: userMessage,
-      })
-    if (msgError) console.error('Error saving received message:', msgError)
-
-    // 自動返信チェック
-    await checkAutoReply(tenant, lineUserId, userMessage)
+    // 受信メッセージ保存と自動返信を並列実行
+    const [saveResult] = await Promise.all([
+      supabaseAdmin
+        .from('messages')
+        .insert({
+          tenant_id: tenant.id,
+          user_id: internalUserId,
+          line_user_id: lineUserId,
+          direction: 'received',
+          message_type: 'text',
+          content: userMessage,
+        }),
+      checkAutoReply(tenant, lineUserId, userMessage, internalUserId),
+    ])
+    if (saveResult.error) console.error('Error saving received message:', saveResult.error)
   } else {
     // テキスト以外（画像・スタンプ等）はプレースホルダーで保存
     const placeholders: Record<string, string> = {
@@ -206,17 +206,31 @@ async function handleMessage(event: MessageEvent, tenant: any) {
   }
 }
 
-// 自動返信チェック
-async function checkAutoReply(tenant: any, lineUserId: string, userMessage: string) {
-  try {
-    const { data: rules } = await supabaseAdmin
-      .from('auto_reply_rules')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .eq('is_active', true)
-      .order('priority', { ascending: false })
+// 自動返信ルールキャッシュ（5分TTL）
+const rulesCache = new Map<string, { rules: any[]; expiry: number }>()
 
-    if (!rules || rules.length === 0) return
+async function getAutoReplyRules(tenantId: string) {
+  const cached = rulesCache.get(tenantId)
+  if (cached && cached.expiry > Date.now()) return cached.rules
+
+  const { data: rules } = await supabaseAdmin
+    .from('auto_reply_rules')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('priority', { ascending: false })
+
+  const result = rules || []
+  rulesCache.set(tenantId, { rules: result, expiry: Date.now() + 5 * 60 * 1000 })
+  return result
+}
+
+// 自動返信チェック
+async function checkAutoReply(tenant: any, lineUserId: string, userMessage: string, internalUserId: string | null) {
+  try {
+    const rules = await getAutoReplyRules(tenant.id)
+
+    if (rules.length === 0) return
 
     for (const rule of rules) {
       let matched = false
@@ -242,6 +256,23 @@ async function checkAutoReply(tenant: any, lineUserId: string, userMessage: stri
         } else {
           await sendMultipleTextMessages(tenant, lineUserId, rule.reply_messages)
         }
+
+        // 送信メッセージをDBに保存（非同期で実行、返信速度に影響しない）
+        Promise.all(
+          rule.reply_messages.map((replyMsg: string) =>
+            supabaseAdmin
+              .from('messages')
+              .insert({
+                tenant_id: tenant.id,
+                user_id: internalUserId,
+                line_user_id: lineUserId,
+                direction: 'sent',
+                message_type: 'text',
+                content: replyMsg,
+              })
+          )
+        ).catch(err => console.error('Error saving auto reply messages:', err))
+
         return // 最初にマッチしたルールのみ返信
       }
     }

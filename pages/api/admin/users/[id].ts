@@ -75,6 +75,17 @@ async function handleGet(id: string, res: NextApiResponse) {
       .order('created_at', { ascending: true })
       .limit(200)
 
+    // 未読メッセージを既読にする
+    const unreadIds = (messages ?? [])
+      .filter(m => m.direction === 'received' && m.read_at === null)
+      .map(m => m.id)
+    if (unreadIds.length > 0) {
+      await supabaseAdmin
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds)
+    }
+
     // タグを取得
     const { data: userTags } = await supabaseAdmin
       .from('user_tags')

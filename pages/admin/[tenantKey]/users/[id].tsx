@@ -89,13 +89,39 @@ export default function UserDetailPage() {
   const [tagInput, setTagInput] = useState('')
   const [newNoteText, setNewNoteText] = useState('')
   const [showNoteForm, setShowNoteForm] = useState(false)
+  const prevTotalUnreadRef = useRef<number | null>(null)
+
+  // ブラウザ通知の許可リクエスト
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
 
   // インボックス取得
   const fetchInbox = useCallback(() => {
     if (!tenantKey) return
     fetch(`/api/admin/messages?tenantKey=${tenantKey}`)
       .then(r => r.json())
-      .then(data => setInbox(data.inbox || []))
+      .then(data => {
+        const items: InboxItem[] = data.inbox || []
+        const totalUnread = items.reduce((sum, item) => sum + item.unread_count, 0)
+
+        // 未読が増えた場合にブラウザ通知
+        if (prevTotalUnreadRef.current !== null && totalUnread > prevTotalUnreadRef.current) {
+          const newItems = items.filter(item => item.unread_count > 0)
+          if (newItems.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+            const latest = newItems[0]
+            new Notification('新しいメッセージ', {
+              body: `${latest.display_name || 'ユーザー'}: ${latest.latest_message_content}`,
+              icon: latest.picture_url || '/default-avatar.png',
+            })
+          }
+        }
+        prevTotalUnreadRef.current = totalUnread
+
+        setInbox(items)
+      })
       .catch(console.error)
   }, [tenantKey])
 
