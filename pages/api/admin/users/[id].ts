@@ -67,13 +67,14 @@ async function handleGet(id: string, res: NextApiResponse) {
       }
     }
 
-    // メッセージ履歴を取得（user_id が null の旧データは line_user_id で照合）
-    const { data: messages } = await supabaseAdmin
+    // メッセージ履歴を取得（最新50件、降順で取得して昇順に並び替え）
+    const { data: messagesDesc } = await supabaseAdmin
       .from('messages')
       .select('*')
       .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
-      .order('created_at', { ascending: true })
-      .limit(200)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    const messages = (messagesDesc ?? []).reverse()
 
     // 未読メッセージを既読にする
     const unreadIds = (messages ?? [])

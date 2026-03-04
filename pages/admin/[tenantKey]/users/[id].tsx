@@ -79,6 +79,8 @@ export default function UserDetailPage() {
   const [loading, setLoading] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
 
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -142,7 +144,9 @@ export default function UserDetailPage() {
       .then(data => {
         setUser(data.user)
         setResponses(data.responses || [])
-        setMessages(data.messages || [])
+        const msgs = data.messages || []
+        setMessages(msgs)
+        setHasMoreMessages(msgs.length >= 50)
         setTags(data.tags || [])
         setNotes(data.notes || [])
       })
@@ -151,6 +155,26 @@ export default function UserDetailPage() {
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // 過去メッセージ読み込み
+  const loadMoreMessages = async () => {
+    if (!id || loadingMore || messages.length === 0) return
+    setLoadingMore(true)
+    try {
+      const oldest = messages[0].created_at
+      const res = await fetch(`/api/admin/users/${id}/messages?before=${oldest}`)
+      const data = await res.json()
+      const olderMsgs: Message[] = data.messages || []
+      if (olderMsgs.length > 0) {
+        setMessages([...olderMsgs, ...messages])
+      }
+      setHasMoreMessages(data.hasMore ?? false)
+    } catch {
+      // エラー
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // 15秒ごとにメッセージを自動更新
   useEffect(() => {
@@ -446,6 +470,17 @@ export default function UserDetailPage() {
             </div>
 
             <div style={st.chatThread} ref={threadRef}>
+              {hasMoreMessages && messages.length > 0 && (
+                <div style={st.loadMoreRow}>
+                  <button
+                    style={st.loadMoreBtn}
+                    onClick={loadMoreMessages}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? '読み込み中...' : '過去のメッセージを読み込む'}
+                  </button>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div style={st.emptyChat}>メッセージ履歴がありません</div>
               ) : (
@@ -785,6 +820,14 @@ const st: Record<string, React.CSSProperties> = {
     flex: 1, overflowY: 'auto', padding: '16px 20px',
     backgroundColor: '#7494C0', display: 'flex',
     flexDirection: 'column', gap: '12px',
+  },
+  loadMoreRow: {
+    textAlign: 'center', padding: '8px 0',
+  },
+  loadMoreBtn: {
+    padding: '6px 16px', fontSize: '12px', color: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+    borderRadius: '16px', cursor: 'pointer',
   },
   emptyChat: {
     textAlign: 'center', color: 'rgba(255,255,255,0.7)',

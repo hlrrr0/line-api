@@ -48,13 +48,13 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
       return res.status(200).json({ messages: messages ?? [] })
     }
 
-    // インボックス一覧: テナントの全メッセージを降順取得してユーザーごとに集計
+    // インボックス: ユーザーごとに最新1件だけ取得（降順→先頭がそのユーザーの最新）
     const { data: allMessages, error } = await supabaseAdmin
       .from('messages')
-      .select('*, users(id, display_name, picture_url)')
+      .select('user_id, line_user_id, content, created_at, direction, read_at, users(id, display_name, picture_url)')
       .eq('tenant_id', tenant.id)
       .order('created_at', { ascending: false })
-      .limit(2000)
+      .limit(500)
 
     if (error) throw error
 
