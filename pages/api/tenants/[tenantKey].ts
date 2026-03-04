@@ -29,6 +29,7 @@ export default async function handler(
         tenant_key: tenant.tenant_key,
         name: tenant.name,
         liff_id: tenant.liff_id,
+        meta_pixel_id: tenant.meta_pixel_id || null,
         is_active: tenant.is_active,
       }
     })

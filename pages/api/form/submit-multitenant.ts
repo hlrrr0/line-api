@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTenantByKey } from '@/lib/tenant'
-import { getLineProfile } from '@/lib/line-multitenant'
+import { getLineProfile, sendTextMessage } from '@/lib/line-multitenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -96,6 +96,15 @@ export default async function handler(
               tag_id: tag.id
             })
         }
+      }
+    }
+
+    // LINE認証済みユーザーに完了メッセージを送信
+    if (userId) {
+      try {
+        await sendTextMessage(tenant, userId, 'アンケートにご回答いただきありがとうございます。\nあなたに合った求人情報をお届けしますので、お楽しみに！')
+      } catch (e) {
+        console.error('Error sending completion message:', e)
       }
     }
 

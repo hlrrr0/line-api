@@ -17,6 +17,7 @@ export default async function handler(
         name: t.name,
         line_channel_id: t.line_channel_id,
         liff_id: t.liff_id,
+        meta_pixel_id: t.meta_pixel_id || '',
         is_active: t.is_active,
         has_credentials: !!(t.line_channel_access_token && t.line_channel_secret),
         created_at: t.created_at,

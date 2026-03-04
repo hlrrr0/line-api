@@ -8,6 +8,7 @@ interface Tenant {
   name: string
   line_channel_id: string
   liff_id?: string
+  meta_pixel_id?: string
   is_active: boolean
   has_credentials: boolean
   created_at: string
@@ -25,6 +26,7 @@ export default function TenantsPage() {
     line_channel_secret: '',
     line_channel_access_token: '',
     liff_id: '',
+    meta_pixel_id: '',
   })
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export default function TenantsPage() {
           line_channel_secret: '',
           line_channel_access_token: '',
           liff_id: '',
+          meta_pixel_id: '',
         })
         setShowForm(false)
         setEditingTenant(null)
@@ -93,6 +96,7 @@ export default function TenantsPage() {
       line_channel_secret: '',
       line_channel_access_token: '',
       liff_id: tenant.liff_id || '',
+      meta_pixel_id: tenant.meta_pixel_id || '',
     })
     setShowForm(true)
   }
@@ -106,6 +110,7 @@ export default function TenantsPage() {
       line_channel_secret: '',
       line_channel_access_token: '',
       liff_id: '',
+      meta_pixel_id: '',
     })
     setShowForm(false)
   }
@@ -227,6 +232,18 @@ export default function TenantsPage() {
                 />
               </div>
 
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Meta Pixel ID</label>
+                <input
+                  type="text"
+                  value={formData.meta_pixel_id}
+                  onChange={(e) => setFormData({ ...formData, meta_pixel_id: e.target.value })}
+                  placeholder="例: 123456789012345"
+                  style={styles.input}
+                />
+                <small style={styles.helpText}>LIFFフォームにMeta Pixelを埋め込みます（任意）</small>
+              </div>
+
               <div style={{display: 'flex', gap: '10px'}}>
                 <button type="submit" style={styles.button}>
                   {editingTenant ? '更新する' : '作成する'}
@@ -272,6 +289,11 @@ export default function TenantsPage() {
                     {tenant.liff_id && (
                       <div style={styles.infoRow}>
                         <strong>LIFF ID:</strong> {tenant.liff_id}
+                      </div>
+                    )}
+                    {tenant.meta_pixel_id && (
+                      <div style={styles.infoRow}>
+                        <strong>Meta Pixel ID:</strong> {tenant.meta_pixel_id}
                       </div>
                     )}
                   </div>
