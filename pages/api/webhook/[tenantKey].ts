@@ -159,15 +159,6 @@ async function handleMessage(event: MessageEvent, tenant: any) {
         content: userMessage,
       })
     if (msgError) console.error('Error saving received message:', msgError)
-
-    // 自動返信
-    let replyMessage = 'メッセージを受信しました。'
-    if (userMessage.includes('アンケート') || userMessage.includes('フォーム')) {
-      replyMessage = 'アンケートフォームは下記のメニューから「アンケート」を選択してください。'
-    } else if (userMessage.includes('ヘルプ') || userMessage.includes('使い方')) {
-      replyMessage = '使い方:\n1. メニューから「アンケート」を選択\n2. フォームに回答\n3. お得な情報を受け取る'
-    }
-    await sendTextMessage(tenant, lineUserId, replyMessage)
   } else {
     // テキスト以外（画像・スタンプ等）はプレースホルダーで保存
     const placeholders: Record<string, string> = {
