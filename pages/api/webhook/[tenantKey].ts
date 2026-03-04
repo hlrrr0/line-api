@@ -103,12 +103,16 @@ async function handleFollow(event: FollowEvent, tenant: any) {
       console.error('Error saving user:', error)
     }
 
-    // ウェルカムメッセージ送信
-    await sendTextMessage(
-      tenant,
-      userId,
-      'ご登録ありがとうございます！\n\nアンケートフォームにご協力いただけると幸いです。\n下記のメニューから「アンケート」を選択してください。'
-    )
+    // ウェルカムメッセージ送信（LIFFフォームURLを含む）
+    const formUrl = tenant.liff_id
+      ? `https://liff.line.me/${tenant.liff_id}`
+      : null
+
+    const welcomeText = formUrl
+      ? `ご登録ありがとうございます！\n\nアンケートフォームにご協力いただけると幸いです。\n下記のリンクからご回答ください。\n${formUrl}`
+      : 'ご登録ありがとうございます！'
+
+    await sendTextMessage(tenant, userId, welcomeText)
   } catch (error) {
     console.error('Error handling follow event:', error)
   }

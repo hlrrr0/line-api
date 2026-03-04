@@ -11,9 +11,9 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { tenantKey, userId, formData } = req.body
+  const { tenantKey, userId, formData, source } = req.body
 
-  if (!tenantKey || !userId || !formData) {
+  if (!tenantKey || !formData) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
 
@@ -24,52 +24,57 @@ export default async function handler(
       return res.status(404).json({ error: 'Tenant not found' })
     }
 
-    // ユーザー情報を取得または作成
-    let { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .eq('line_user_id', userId)
-      .single()
+    let user: any = null
 
-    if (userError || !user) {
-      // 新規ユーザーの場合、LINEプロフィールを取得して登録
-      const profile = await getLineProfile(tenant, userId)
-
-      const { data: newUser, error: insertError } = await supabaseAdmin
+    if (userId) {
+      // LINE認証済み: ユーザー情報を取得または作成
+      const { data: existingUser } = await supabaseAdmin
         .from('users')
-        .insert({
-          tenant_id: tenant.id,
-          line_user_id: userId,
-          display_name: profile?.displayName || '',
-          picture_url: profile?.pictureUrl || '',
-          status_message: profile?.statusMessage || '',
-        })
-        .select()
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .eq('line_user_id', userId)
         .single()
 
-      if (insertError) {
-        throw insertError
-      }
+      if (existingUser) {
+        user = existingUser
+      } else {
+        // 新規ユーザーの場合、LINEプロフィールを取得して登録
+        const profile = await getLineProfile(tenant, userId)
 
-      user = newUser
+        const { data: newUser, error: insertError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            tenant_id: tenant.id,
+            line_user_id: userId,
+            display_name: profile?.displayName || '',
+            picture_url: profile?.pictureUrl || '',
+            status_message: profile?.statusMessage || '',
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        user = newUser
+      }
     }
 
-    // フォーム回答を保存
+    // フォーム回答を保存（source付き、user_idは任意）
+    const responseData: Record<string, any> = {
+      tenant_id: tenant.id,
+      form_data: source ? { ...formData, _source: source } : formData,
+    }
+    if (user) responseData.user_id = user.id
+
     const { error: responseError } = await supabaseAdmin
       .from('form_responses')
-      .insert({
-        tenant_id: tenant.id,
-        user_id: user.id,
-        form_data: formData,
-      })
+      .insert(responseData)
 
     if (responseError) {
       throw responseError
     }
 
-    // タグの自動付与（興味のあるジャンルをタグとして登録）
-    if (formData.interests && Array.isArray(formData.interests)) {
+    // タグの自動付与（LINE認証済みユーザーのみ）
+    if (user && formData.interests && Array.isArray(formData.interests)) {
       for (const interest of formData.interests) {
         // タグが存在しない場合は作成
         const { data: tag, error: tagError } = await supabaseAdmin

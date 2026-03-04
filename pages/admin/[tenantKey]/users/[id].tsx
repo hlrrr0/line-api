@@ -97,7 +97,7 @@ export default function UserDetailPage() {
   // インボックスも定期更新
   useEffect(() => {
     if (!tenantKey) return
-    const timer = setInterval(fetchInbox, 10000)
+    const timer = setInterval(fetchInbox, 15000)
     return () => clearInterval(timer)
   }, [tenantKey, fetchInbox])
 
@@ -119,7 +119,7 @@ export default function UserDetailPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // 5秒ごとにメッセージを自動更新
+  // 15秒ごとにメッセージを自動更新
   useEffect(() => {
     if (!id) return
     const timer = setInterval(() => {
@@ -127,7 +127,7 @@ export default function UserDetailPage() {
         .then(r => r.json())
         .then(data => setMessages(data.messages || []))
         .catch(console.error)
-    }, 5000)
+    }, 15000)
     return () => clearInterval(timer)
   }, [id])
 
@@ -138,7 +138,7 @@ export default function UserDetailPage() {
   }, [messages])
 
   const handleSelectUser = (userId: string) => {
-    router.push(`/admin/users/${userId}?tenantKey=${tenantKey}`, undefined, { shallow: false })
+    router.push(`/admin/${tenantKey}/users/${userId}`, undefined, { shallow: false })
   }
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -288,10 +288,10 @@ export default function UserDetailPage() {
   }
 
   if (loading) {
-    return <div style={s.loadingScreen}>読み込み中...</div>
+    return <div style={st.loadingScreen}>読み込み中...</div>
   }
   if (!user) {
-    return <div style={s.loadingScreen}>ユーザーが見つかりません</div>
+    return <div style={st.loadingScreen}>ユーザーが見つかりません</div>
   }
 
   return (
@@ -300,51 +300,51 @@ export default function UserDetailPage() {
         <title>{user.display_name || 'ユーザー詳細'} - LINE配信システム</title>
       </Head>
 
-      <div style={s.page}>
-        <div style={s.main}>
+      <div style={st.page}>
+        <div style={st.main}>
           {/* ===== 左: ユーザー一覧パネル ===== */}
-          <div style={s.listPanel}>
-            <div style={s.listNav}>
-              <Link href="/admin" style={s.navLink}>← 管理画面</Link>
+          <div style={st.listPanel}>
+            <div style={st.listNav}>
+              <Link href={`/admin/${tenantKey}`} style={st.navLink}>← ダッシュボード</Link>
             </div>
-            <div style={s.listHeader}>
-              <span style={s.listTitle}>すべて</span>
+            <div style={st.listHeader}>
+              <span style={st.listTitle}>すべて</span>
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="検索"
-                style={s.listSearch}
+                style={st.listSearch}
               />
             </div>
-            <div style={s.listBody}>
+            <div style={st.listBody}>
               {filteredInbox.map(item => (
                 <div
                   key={item.user_id}
                   style={{
-                    ...s.listItem,
-                    ...(item.user_id === id ? s.listItemActive : {}),
+                    ...st.listItem,
+                    ...(item.user_id === id ? st.listItemActive : {}),
                   }}
                   onClick={() => handleSelectUser(item.user_id)}
                 >
                   <img
                     src={item.picture_url || '/default-avatar.png'}
                     alt=""
-                    style={s.listAvatar}
+                    style={st.listAvatar}
                   />
-                  <div style={s.listItemContent}>
-                    <div style={s.listItemTop}>
-                      <span style={s.listItemName}>{item.display_name || 'ユーザー'}</span>
-                      <span style={s.listItemDate}>{formatRelativeDate(item.latest_message_at)}</span>
+                  <div style={st.listItemContent}>
+                    <div style={st.listItemTop}>
+                      <span style={st.listItemName}>{item.display_name || 'ユーザー'}</span>
+                      <span style={st.listItemDate}>{formatRelativeDate(item.latest_message_at)}</span>
                     </div>
-                    <div style={s.listItemBottom}>
-                      <span style={s.listItemPreview}>
+                    <div style={st.listItemBottom}>
+                      <span style={st.listItemPreview}>
                         {item.latest_message_content.length > 30
                           ? item.latest_message_content.slice(0, 30) + '...'
                           : item.latest_message_content}
                       </span>
                     </div>
                     {item.unread_count > 0 && (
-                      <span style={s.unreadBadge}>{item.unread_count}</span>
+                      <span style={st.unreadBadge}>{item.unread_count}</span>
                     )}
                   </div>
                 </div>
@@ -353,17 +353,16 @@ export default function UserDetailPage() {
           </div>
 
           {/* ===== 中央: チャットエリア ===== */}
-          <div style={s.chatArea}>
-            {/* チャットヘッダー */}
-            <div style={s.chatHeader}>
-              <div style={s.chatHeaderLeft}>
-                <span style={s.chatHeaderName}>{user.display_name || 'ユーザー'}</span>
+          <div style={st.chatArea}>
+            <div style={st.chatHeader}>
+              <div style={st.chatHeaderLeft}>
+                <span style={st.chatHeaderName}>{user.display_name || 'ユーザー'}</span>
               </div>
-              <div style={s.chatHeaderActions}>
+              <div style={st.chatHeaderActions}>
                 <button
                   style={{
-                    ...s.statusBtn,
-                    ...(user.support_status === 'action_required' ? s.statusBtnActionActive : s.statusBtnAction),
+                    ...st.statusBtn,
+                    ...(user.support_status === 'action_required' ? st.statusBtnActionActive : st.statusBtnAction),
                   }}
                   onClick={() => handleStatusToggle('action_required')}
                 >
@@ -371,8 +370,8 @@ export default function UserDetailPage() {
                 </button>
                 <button
                   style={{
-                    ...s.statusBtn,
-                    ...(user.support_status === 'resolved' ? s.statusBtnResolvedActive : s.statusBtnResolved),
+                    ...st.statusBtn,
+                    ...(user.support_status === 'resolved' ? st.statusBtnResolvedActive : st.statusBtnResolved),
                   }}
                   onClick={() => handleStatusToggle('resolved')}
                 >
@@ -381,29 +380,29 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            <div style={s.chatThread} ref={threadRef}>
+            <div style={st.chatThread} ref={threadRef}>
               {messages.length === 0 ? (
-                <div style={s.emptyChat}>メッセージ履歴がありません</div>
+                <div style={st.emptyChat}>メッセージ履歴がありません</div>
               ) : (
                 messages.map((msg, i) => {
                   const isSent = msg.direction === 'sent'
                   const showSender = isSent && (i === 0 || messages[i - 1].direction !== 'sent')
                   return (
-                    <div key={msg.id} style={{ ...s.msgRow, justifyContent: isSent ? 'flex-end' : 'flex-start' }}>
+                    <div key={msg.id} style={{ ...st.msgRow, justifyContent: isSent ? 'flex-end' : 'flex-start' }}>
                       {!isSent && (
                         <img
                           src={user.picture_url || '/default-avatar.png'}
                           alt=""
-                          style={s.msgAvatar}
+                          style={st.msgAvatar}
                         />
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
-                        {showSender && <span style={s.senderName}>管理者</span>}
+                        {showSender && <span style={st.senderName}>管理者</span>}
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', flexDirection: isSent ? 'row-reverse' : 'row' }}>
-                          <div style={isSent ? s.bubbleSent : s.bubbleReceived}>
+                          <div style={isSent ? st.bubbleSent : st.bubbleReceived}>
                             {msg.content}
                           </div>
-                          <span style={s.msgTime}>
+                          <span style={st.msgTime}>
                             {new Date(msg.created_at).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -414,25 +413,24 @@ export default function UserDetailPage() {
               )}
             </div>
 
-            {/* メッセージ入力 */}
             {!user.is_blocked && tenantKey && (
-              <div style={s.inputArea}>
-                <div style={s.inputHint}>Enterで送信 / Shift + Enterで改行</div>
-                <div style={s.inputRow}>
+              <div style={st.inputArea}>
+                <div style={st.inputHint}>Enterで送信 / Shift + Enterで改行</div>
+                <div style={st.inputRow}>
                   <textarea
                     value={messageText}
                     onChange={e => setMessageText(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="メッセージを入力"
                     rows={1}
-                    style={s.textInput}
+                    style={st.textInput}
                   />
                   <button
                     onClick={() => handleSendMessage()}
                     disabled={sending || !messageText.trim()}
                     style={{
-                      ...s.sendBtn,
-                      ...(sending || !messageText.trim() ? s.sendBtnDisabled : {}),
+                      ...st.sendBtn,
+                      ...(sending || !messageText.trim() ? st.sendBtnDisabled : {}),
                     }}
                   >
                     送信
@@ -443,127 +441,122 @@ export default function UserDetailPage() {
           </div>
 
           {/* ===== 右: プロフィールサイドバー ===== */}
-          <div style={s.sidebar}>
-            {/* プロフィールセクション */}
-            <div style={s.profileSection}>
+          <div style={st.sidebar}>
+            <div style={st.profileSection}>
               <img
                 src={user.picture_url || '/default-avatar.png'}
                 alt={user.display_name}
-                style={s.largeAvatar}
+                style={st.largeAvatar}
               />
-              <div style={s.displayName}>
+              <div style={st.displayName}>
                 {user.display_name || '未設定'}
               </div>
 
-              {/* タグ */}
-              <div style={s.tagSection}>
+              <div style={st.tagSection}>
                 {tags.map(tag => (
-                  <span key={tag.id} style={s.tagBadge}>
+                  <span key={tag.id} style={st.tagBadge}>
                     {tag.name}
                     {editingTags && (
-                      <span style={s.tagRemove} onClick={() => handleRemoveTag(tag.id)}>×</span>
+                      <span style={st.tagRemove} onClick={() => handleRemoveTag(tag.id)}>×</span>
                     )}
                   </span>
                 ))}
-                <button style={s.editIcon} onClick={() => setEditingTags(!editingTags)}>✏️</button>
+                <button style={st.editIcon} onClick={() => setEditingTags(!editingTags)}>✏️</button>
               </div>
               {editingTags && (
-                <div style={s.tagInputRow}>
+                <div style={st.tagInputRow}>
                   <input
                     value={tagInput}
                     onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleAddTag() }}
                     placeholder="タグ名を入力"
-                    style={s.tagInputField}
+                    style={st.tagInputField}
                   />
-                  <button onClick={handleAddTag} style={s.tagAddBtn}>追加</button>
+                  <button onClick={handleAddTag} style={st.tagAddBtn}>追加</button>
                 </div>
               )}
             </div>
 
-            {/* 担当者 */}
-            <div style={s.assigneeSection}>
-              <span style={s.assigneeLabel}>担当者</span>
+            <div style={st.assigneeSection}>
+              <span style={st.assigneeLabel}>担当者</span>
               {editingAssignee ? (
-                <div style={s.assigneeEditRow}>
+                <div style={st.assigneeEditRow}>
                   <input
                     value={assigneeInput}
                     onChange={e => setAssigneeInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleAssigneeSave() }}
                     placeholder="担当者名"
-                    style={s.assigneeInput}
+                    style={st.assigneeInput}
                     autoFocus
                   />
-                  <button onClick={handleAssigneeSave} style={s.assigneeSaveBtn}>保存</button>
+                  <button onClick={handleAssigneeSave} style={st.assigneeSaveBtn}>保存</button>
                 </div>
               ) : (
-                <div style={s.assigneeValueRow}>
-                  <span style={s.assigneeValue}>{user.assignee_name || '未設定'}</span>
-                  <button style={s.editIcon} onClick={() => { setAssigneeInput(user.assignee_name || ''); setEditingAssignee(true) }}>✏️</button>
+                <div style={st.assigneeValueRow}>
+                  <span style={st.assigneeValue}>{user.assignee_name || '未設定'}</span>
+                  <button style={st.editIcon} onClick={() => { setAssigneeInput(user.assignee_name || ''); setEditingAssignee(true) }}>✏️</button>
                 </div>
               )}
             </div>
 
-            {/* タブ */}
-            <div style={s.tabBar}>
+            <div style={st.tabBar}>
               <button
-                style={{ ...s.tab, ...(sidebarTab === 'notes' ? s.tabActive : {}) }}
+                style={{ ...st.tab, ...(sidebarTab === 'notes' ? st.tabActive : {}) }}
                 onClick={() => setSidebarTab('notes')}
               >
-                ノート {notes.length > 0 && <span style={s.tabCount}>{notes.length}</span>}
+                ノート {notes.length > 0 && <span style={st.tabCount}>{notes.length}</span>}
               </button>
               <button
-                style={{ ...s.tab, ...(sidebarTab === 'activity' ? s.tabActive : {}) }}
+                style={{ ...st.tab, ...(sidebarTab === 'activity' ? st.tabActive : {}) }}
                 onClick={() => setSidebarTab('activity')}
               >
                 アクティビティ
               </button>
             </div>
 
-            {/* タブコンテンツ */}
-            <div style={s.tabContent}>
+            <div style={st.tabContent}>
               {sidebarTab === 'notes' ? (
                 <div>
-                  <div style={s.noteHeader}>
-                    <span style={s.noteCount}>{notes.length}件</span>
-                    <button style={s.noteAddBtn} onClick={() => setShowNoteForm(true)}>
+                  <div style={st.noteHeader}>
+                    <span style={st.noteCount}>{notes.length}件</span>
+                    <button style={st.noteAddBtn} onClick={() => setShowNoteForm(true)}>
                       ノートを追加 +
                     </button>
                   </div>
 
                   {showNoteForm && (
-                    <div style={s.noteForm}>
+                    <div style={st.noteForm}>
                       <textarea
                         value={newNoteText}
                         onChange={e => setNewNoteText(e.target.value)}
                         placeholder="ノートを入力..."
                         rows={3}
-                        style={s.noteTextarea}
+                        style={st.noteTextarea}
                       />
-                      <div style={s.noteFormActions}>
-                        <button onClick={() => { setShowNoteForm(false); setNewNoteText('') }} style={s.noteCancelBtn}>キャンセル</button>
-                        <button onClick={handleAddNote} disabled={!newNoteText.trim()} style={s.noteSaveBtn}>保存</button>
+                      <div style={st.noteFormActions}>
+                        <button onClick={() => { setShowNoteForm(false); setNewNoteText('') }} style={st.noteCancelBtn}>キャンセル</button>
+                        <button onClick={handleAddNote} disabled={!newNoteText.trim()} style={st.noteSaveBtn}>保存</button>
                       </div>
                     </div>
                   )}
 
                   {notes.length === 0 && !showNoteForm ? (
-                    <div style={s.emptyNotes}>
-                      <div style={s.emptyNotesIcon}>ℹ️</div>
-                      <div style={s.emptyNotesTitle}>相手とのやりとりを記録できます</div>
-                      <div style={s.emptyNotesDesc}>相手の情報や対応の記録、引き継ぎ用のメモなどを追加できます。ノートの内容は相手には見えず、アカウントのメンバーだけが閲覧・編集できます。</div>
+                    <div style={st.emptyNotes}>
+                      <div style={st.emptyNotesIcon}>ℹ️</div>
+                      <div style={st.emptyNotesTitle}>相手とのやりとりを記録できます</div>
+                      <div style={st.emptyNotesDesc}>相手の情報や対応の記録、引き継ぎ用のメモなどを追加できます。ノートの内容は相手には見えず、アカウントのメンバーだけが閲覧・編集できます。</div>
                     </div>
                   ) : (
-                    <div style={s.noteList}>
+                    <div style={st.noteList}>
                       {notes.map(note => (
-                        <div key={note.id} style={s.noteItem}>
-                          <div style={s.noteContent}>{note.content}</div>
-                          <div style={s.noteMeta}>
+                        <div key={note.id} style={st.noteItem}>
+                          <div style={st.noteContent}>{note.content}</div>
+                          <div style={st.noteMeta}>
                             {note.created_by && <span>{note.created_by} · </span>}
                             {new Date(note.created_at).toLocaleString('ja-JP', {
                               month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
                             })}
-                            <button style={s.noteDeleteBtn} onClick={() => handleDeleteNote(note.id)}>削除</button>
+                            <button style={st.noteDeleteBtn} onClick={() => handleDeleteNote(note.id)}>削除</button>
                           </div>
                         </div>
                       ))}
@@ -571,26 +564,26 @@ export default function UserDetailPage() {
                   )}
                 </div>
               ) : (
-                <div style={s.activityTab}>
+                <div style={st.activityTab}>
                   {responses.length === 0 ? (
-                    <p style={s.emptyActivity}>アクティビティがありません</p>
+                    <p style={st.emptyActivity}>アクティビティがありません</p>
                   ) : (
                     responses.map(response => (
-                      <div key={response.id} style={s.activityItem}>
-                        <div style={s.activityHeader}>
-                          <span style={s.activityFormName}>
+                      <div key={response.id} style={st.activityItem}>
+                        <div style={st.activityHeader}>
+                          <span style={st.activityFormName}>
                             {response.form_definitions?.name || '不明なフォーム'}
                           </span>
-                          <span style={s.activityDate}>
+                          <span style={st.activityDate}>
                             {new Date(response.created_at).toLocaleString('ja-JP')}
                           </span>
                         </div>
-                        <table style={s.activityTable}>
+                        <table style={st.activityTable}>
                           <tbody>
                             {Object.entries(response.form_data || {}).map(([key, value]) => (
                               <tr key={key}>
-                                <td style={s.activityKey}>{key}</td>
-                                <td style={s.activityValue}>
+                                <td style={st.activityKey}>{key}</td>
+                                <td style={st.activityValue}>
                                   {Array.isArray(value) ? value.join(', ') : String(value ?? '')}
                                 </td>
                               </tr>
@@ -612,7 +605,7 @@ export default function UserDetailPage() {
 
 // ===== スタイル定義 =====
 
-const s: Record<string, React.CSSProperties> = {
+const st: Record<string, React.CSSProperties> = {
   loadingScreen: {
     display: 'flex', justifyContent: 'center', alignItems: 'center',
     height: '100vh', fontFamily: 'sans-serif', color: '#666',
@@ -621,13 +614,9 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', height: '100vh',
     fontFamily: 'sans-serif', backgroundColor: '#f5f5f5',
   },
-
-  // メインレイアウト（3カラム）
   main: {
     display: 'flex', flex: 1, overflow: 'hidden',
   },
-
-  // === 左パネル: ユーザー一覧 ===
   listPanel: {
     width: '280px', minWidth: '280px', display: 'flex', flexDirection: 'column',
     backgroundColor: '#fff', borderRight: '1px solid #e0e0e0',
@@ -692,8 +681,6 @@ const s: Record<string, React.CSSProperties> = {
     padding: '1px 7px', borderRadius: '10px', minWidth: '18px',
     textAlign: 'center',
   },
-
-  // === 中央: チャットエリア ===
   chatArea: {
     flex: 1, display: 'flex', flexDirection: 'column',
     borderRight: '1px solid #e0e0e0', minWidth: 0,
@@ -766,8 +753,6 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: '11px', color: 'rgba(255,255,255,0.6)',
     whiteSpace: 'nowrap', flexShrink: 0,
   },
-
-  // メッセージ入力
   inputArea: {
     padding: '8px 16px 12px', backgroundColor: '#fff',
     borderTop: '1px solid #e0e0e0', flexShrink: 0,
@@ -793,14 +778,10 @@ const s: Record<string, React.CSSProperties> = {
   sendBtnDisabled: {
     backgroundColor: '#ccc', cursor: 'not-allowed',
   },
-
-  // === 右: プロフィールサイドバー ===
   sidebar: {
     width: '300px', minWidth: '300px', display: 'flex', flexDirection: 'column',
     backgroundColor: '#fff', overflow: 'hidden',
   },
-
-  // プロフィールセクション
   profileSection: {
     padding: '24px 20px 16px', textAlign: 'center',
     borderBottom: '1px solid #e0e0e0',
@@ -844,8 +825,6 @@ const s: Record<string, React.CSSProperties> = {
     padding: '4px 12px', fontSize: '13px', backgroundColor: '#06c755',
     color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer',
   },
-
-  // 担当者
   assigneeSection: {
     display: 'flex', alignItems: 'center', gap: '12px',
     padding: '12px 20px', borderBottom: '1px solid #e0e0e0',
@@ -870,8 +849,6 @@ const s: Record<string, React.CSSProperties> = {
     padding: '4px 12px', fontSize: '13px', backgroundColor: '#06c755',
     color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer',
   },
-
-  // タブ
   tabBar: {
     display: 'flex', borderBottom: '2px solid #e0e0e0', flexShrink: 0,
   },
@@ -892,8 +869,6 @@ const s: Record<string, React.CSSProperties> = {
   tabContent: {
     flex: 1, overflowY: 'auto', padding: '0',
   },
-
-  // ノート
   noteHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
@@ -954,8 +929,6 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: '11px', color: '#e53935', background: 'none',
     border: 'none', cursor: 'pointer', marginLeft: '8px',
   },
-
-  // アクティビティ
   activityTab: {
     padding: '0',
   },

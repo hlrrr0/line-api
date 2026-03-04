@@ -11,55 +11,24 @@ interface User {
   created_at: string
 }
 
-interface Tenant {
-  id: string
-  tenant_key: string
-  name: string
-}
-
 export default function UsersPage() {
   const router = useRouter()
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [selectedTenantKey, setSelectedTenantKey] = useState('')
+  const tenantKey = router.query.tenantKey as string
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'blocked'>('all')
 
   useEffect(() => {
-    fetchTenants()
-  }, [])
-
-  useEffect(() => {
-    if (selectedTenantKey) {
-      fetchUsers()
-    }
-  }, [filter, selectedTenantKey])
-
-  const fetchTenants = async () => {
-    try {
-      const response = await fetch('/api/admin/tenants')
-      const data = await response.json()
-      setTenants(data.tenants || [])
-      if (data.tenants && data.tenants.length > 0) {
-        setSelectedTenantKey(data.tenants[0].tenant_key)
-      }
-    } catch (error) {
-      console.error('Error fetching tenants:', error)
-    }
-  }
-
-  const fetchUsers = async () => {
+    if (!tenantKey) return
     setLoading(true)
-    try {
-      const response = await fetch(`/api/admin/users?tenantKey=${selectedTenantKey}&filter=${filter}`)
-      const data = await response.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    fetch(`/api/admin/users?tenantKey=${tenantKey}&filter=${filter}`)
+      .then(r => r.json())
+      .then(data => setUsers(data.users || []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [filter, tenantKey])
+
+  if (!tenantKey) return null
 
   return (
     <>
@@ -69,53 +38,23 @@ export default function UsersPage() {
 
       <div style={styles.container}>
         <header style={styles.header}>
-          <Link href="/admin" style={styles.backLink}>← 管理画面に戻る</Link>
+          <Link href={`/admin/${tenantKey}`} style={styles.backLink}>← ダッシュボード</Link>
           <h1 style={styles.title}>ユーザー管理</h1>
         </header>
 
-        <div style={styles.tenantSelector}>
-          <label style={styles.label}>テナント選択:</label>
-          <select
-            value={selectedTenantKey}
-            onChange={(e) => setSelectedTenantKey(e.target.value)}
-            style={styles.select}
-          >
-            {tenants.map(tenant => (
-              <option key={tenant.id} value={tenant.tenant_key}>
-                {tenant.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div style={styles.filterBar}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              ...styles.filterButton,
-              ...(filter === 'all' ? styles.filterButtonActive : {})
-            }}
-          >
-            全て
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            style={{
-              ...styles.filterButton,
-              ...(filter === 'active' ? styles.filterButtonActive : {})
-            }}
-          >
-            アクティブ
-          </button>
-          <button
-            onClick={() => setFilter('blocked')}
-            style={{
-              ...styles.filterButton,
-              ...(filter === 'blocked' ? styles.filterButtonActive : {})
-            }}
-          >
-            ブロック済み
-          </button>
+          {(['all', 'active', 'blocked'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                ...styles.filterButton,
+                ...(filter === f ? styles.filterButtonActive : {})
+              }}
+            >
+              {f === 'all' ? '全て' : f === 'active' ? 'アクティブ' : 'ブロック済み'}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -145,7 +84,7 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     style={{ ...styles.tableRow, cursor: 'pointer' }}
-                    onClick={() => router.push(`/admin/users/${user.id}?tenantKey=${selectedTenantKey}`)}
+                    onClick={() => router.push(`/admin/${tenantKey}/users/${user.id}`)}
                   >
                     <td style={styles.td}>{user.display_name || '未設定'}</td>
                     <td style={styles.td}>{user.line_user_id}</td>
@@ -190,23 +129,6 @@ const styles = {
     fontSize: '28px',
     color: '#333',
     margin: 0,
-  },
-  tenantSelector: {
-    marginBottom: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: 'bold' as const,
-  },
-  select: {
-    padding: '8px 12px',
-    fontSize: '14px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    minWidth: '200px',
   },
   filterBar: {
     display: 'flex',

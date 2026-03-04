@@ -16,7 +16,8 @@
       "Bash(grep -n \"tenant_id\\\\|tenantKey\\\\|tenant_key\" /Users/hiroki/git/Line-api/pages/api/forms/[tenantKey].ts)",
       "Bash(find /Users/hiroki/git/Line-api/pages/form* -type f)",
       "Bash(git diff pages/api/webhook/[tenantKey].ts)",
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "Bash(head -80 /Users/hiroki/git/Line-api/pages/api/admin/responses/[id].ts)"
     ]
   }
 }

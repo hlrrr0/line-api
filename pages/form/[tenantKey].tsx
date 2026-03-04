@@ -32,8 +32,10 @@ export default function FormPage() {
   const router = useRouter()
   const { tenantKey } = router.query // URLパラメータからテナントキーを取得
 
-  const [liffReady, setLiffReady] = useState(false)
+  const [ready, setReady] = useState(false)
   const [userId, setUserId] = useState('')
+  const [source, setSource] = useState('')
+  const [isLiff, setIsLiff] = useState(false)
   const [tenantId, setTenantId] = useState('')
   const [formDefinition, setFormDefinition] = useState<FormDefinition | null>(null)
   const [useDefaultForm, setUseDefaultForm] = useState(false)
@@ -84,16 +86,23 @@ export default function FormPage() {
     fetchFormDefinition()
   }, [tenantKey])
 
+  // URLのsourceパラメータを取得
+  useEffect(() => {
+    if (!router.isReady) return
+    const s = router.query.source
+    if (s && typeof s === 'string') setSource(s)
+  }, [router.isReady, router.query.source])
+
   useEffect(() => {
     if (!tenantKey) return
 
-    // LIFF SDK初期化
-    const initLiff = async () => {
+    const init = async () => {
       try {
         // テナント情報を取得
         const tenantResponse = await fetch(`/api/tenants/${tenantKey}`)
         if (!tenantResponse.ok) {
           console.error('Tenant not found')
+          setReady(true) // テナントが見つからなくてもフォームは表示
           return
         }
 
@@ -102,36 +111,48 @@ export default function FormPage() {
 
         const liffId = tenantData.tenant.liff_id
         if (!liffId) {
-          console.error('LIFF ID is not set for this tenant')
+          // LIFF IDがない場合は認証なしモード
+          setReady(true)
           return
         }
 
-        await window.liff.init({ liffId })
+        // LIFF SDKを読み込んで初期化を試行
+        const script = document.createElement('script')
+        script.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
+        script.onload = async () => {
+          try {
+            await window.liff.init({ liffId })
 
-        if (!window.liff.isLoggedIn()) {
-          window.liff.login()
-          return
+            if (window.liff.isInClient()) {
+              // LINE内ブラウザ（LIFF環境）→ 自動認証
+              setIsLiff(true)
+              const profile = await window.liff.getProfile()
+              setUserId(profile.userId)
+            } else if (window.liff.isLoggedIn()) {
+              // 外部ブラウザだがLIFFログイン済み
+              setIsLiff(true)
+              const profile = await window.liff.getProfile()
+              setUserId(profile.userId)
+            }
+            // 外部ブラウザ＆未ログイン → 認証なしで回答可能
+          } catch (error) {
+            console.error('LIFF initialization failed:', error)
+          }
+          setReady(true)
         }
-
-        const profile = await window.liff.getProfile()
-        setUserId(profile.userId)
-        setLiffReady(true)
+        script.onerror = () => {
+          // LIFF SDK読み込み失敗 → 認証なしモード
+          setReady(true)
+        }
+        document.body.appendChild(script)
+        return
       } catch (error) {
-        console.error('LIFF initialization failed:', error)
+        console.error('Init failed:', error)
       }
+      setReady(true)
     }
 
-    // LIFF SDKスクリプト読み込み
-    const script = document.createElement('script')
-    script.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
-    script.onload = () => initLiff()
-    document.body.appendChild(script)
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
-    }
+    init()
   }, [tenantKey])
 
   const handleInputChange = (fieldId: string, value: any) => {
@@ -312,16 +333,19 @@ export default function FormPage() {
         },
         body: JSON.stringify({
           tenantKey,
-          userId,
+          userId: userId || null,
           formData,
+          source: source || null,
         }),
       })
 
       if (response.ok) {
         setSubmitSuccess(true)
-        setTimeout(() => {
-          window.liff.closeWindow()
-        }, 2000)
+        if (isLiff && window.liff) {
+          setTimeout(() => {
+            try { window.liff.closeWindow() } catch { /* */ }
+          }, 2000)
+        }
       } else {
         alert('送信に失敗しました')
       }
@@ -341,7 +365,7 @@ export default function FormPage() {
     )
   }
 
-  if (!liffReady) {
+  if (!ready) {
     return (
       <div style={styles.loading}>
         <p>読み込み中...</p>

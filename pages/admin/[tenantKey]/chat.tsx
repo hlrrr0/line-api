@@ -3,12 +3,6 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 
-interface Tenant {
-  id: string
-  tenant_key: string
-  name: string
-}
-
 interface InboxItem {
   user_id: string
   display_name: string | null
@@ -20,33 +14,18 @@ interface InboxItem {
 
 export default function ChatPage() {
   const router = useRouter()
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [selectedTenantKey, setSelectedTenantKey] = useState('')
+  const tenantKey = router.query.tenantKey as string
   const [inbox, setInbox] = useState<InboxItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // テナント一覧取得
   useEffect(() => {
-    fetch('/api/admin/tenants')
-      .then(r => r.json())
-      .then(data => {
-        setTenants(data.tenants || [])
-        if (data.tenants?.length > 0) {
-          setSelectedTenantKey(data.tenants[0].tenant_key)
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
-
-  // インボックス取得
-  useEffect(() => {
-    if (!selectedTenantKey) return
-    fetch(`/api/admin/messages?tenantKey=${selectedTenantKey}`)
+    if (!tenantKey) return
+    fetch(`/api/admin/messages?tenantKey=${tenantKey}`)
       .then(r => r.json())
       .then(data => setInbox(data.inbox || []))
       .catch(console.error)
-  }, [selectedTenantKey])
+      .finally(() => setLoading(false))
+  }, [tenantKey])
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
@@ -56,6 +35,8 @@ export default function ChatPage() {
     if (diff < 172800000) return '昨日'
     return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
   }
+
+  if (!tenantKey) return null
 
   if (loading) {
     return <div style={s.loading}>読み込み中...</div>
@@ -67,20 +48,9 @@ export default function ChatPage() {
       <div style={s.page}>
         <header style={s.header}>
           <div style={s.headerLeft}>
-            <Link href="/admin" style={s.backLink}>← 管理画面</Link>
+            <Link href={`/admin/${tenantKey}`} style={s.backLink}>← ダッシュボード</Link>
             <h1 style={s.title}>チャット</h1>
           </div>
-          {tenants.length > 1 && (
-            <select
-              value={selectedTenantKey}
-              onChange={e => setSelectedTenantKey(e.target.value)}
-              style={s.tenantSelect}
-            >
-              {tenants.map(t => (
-                <option key={t.tenant_key} value={t.tenant_key}>{t.name}</option>
-              ))}
-            </select>
-          )}
         </header>
 
         <div style={s.list}>
@@ -91,7 +61,7 @@ export default function ChatPage() {
               <div
                 key={item.user_id}
                 style={s.item}
-                onClick={() => router.push(`/admin/users/${item.user_id}?tenantKey=${selectedTenantKey}`)}
+                onClick={() => router.push(`/admin/${tenantKey}/users/${item.user_id}`)}
               >
                 <img
                   src={item.picture_url || '/default-avatar.png'}
@@ -142,10 +112,6 @@ const s: Record<string, React.CSSProperties> = {
   },
   title: {
     fontSize: '24px', fontWeight: 'bold', color: '#333', margin: 0,
-  },
-  tenantSelect: {
-    padding: '8px 12px', fontSize: '14px', border: '1px solid #ddd',
-    borderRadius: '6px', outline: 'none',
   },
   list: {
     backgroundColor: '#fff', borderRadius: '8px',
