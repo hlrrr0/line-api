@@ -71,6 +71,7 @@ async function handleGet(id: string, res: NextApiResponse) {
     const { data: messagesDesc } = await supabaseAdmin
       .from('messages')
       .select('*')
+      .eq('tenant_id', user.tenant_id)
       .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
       .order('created_at', { ascending: false })
       .limit(50)

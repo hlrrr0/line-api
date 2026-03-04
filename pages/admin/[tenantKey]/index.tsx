@@ -24,7 +24,7 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!tenantKey) return
-    fetch('/api/admin/stats')
+    fetch(`/api/admin/stats?tenantKey=${tenantKey}`)
       .then(r => r.json())
       .then(data => setStats(data))
       .catch(console.error)

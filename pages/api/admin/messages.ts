@@ -48,49 +48,15 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
       return res.status(200).json({ messages: messages ?? [] })
     }
 
-    // インボックス: ユーザーごとに最新1件だけ取得（降順→先頭がそのユーザーの最新）
-    const { data: allMessages, error } = await supabaseAdmin
-      .from('messages')
-      .select('user_id, line_user_id, content, created_at, direction, read_at, users(id, display_name, picture_url)')
-      .eq('tenant_id', tenant.id)
-      .order('created_at', { ascending: false })
-      .limit(500)
+    // インボックス: RPC関数でDB側で集計
+    const { data: rpcInbox, error } = await supabaseAdmin
+      .rpc('get_inbox', { p_tenant_id: tenant.id })
 
     if (error) throw error
 
-    // ユーザーごとに最新メッセージ + 未読数を集計
-    const byUser = new Map<string, {
-      user_id: string
-      line_user_id: string
-      display_name: string | null
-      picture_url: string | null
-      latest_message_content: string
-      latest_message_at: string
-      latest_direction: 'received' | 'sent'
-      unread_count: number
-    }>()
-
-    for (const msg of allMessages ?? []) {
-      const key = msg.user_id ?? msg.line_user_id
-      if (!byUser.has(key)) {
-        byUser.set(key, {
-          user_id: msg.user_id ?? msg.line_user_id,
-          line_user_id: msg.line_user_id,
-          display_name: (msg.users as any)?.display_name ?? null,
-          picture_url: (msg.users as any)?.picture_url ?? null,
-          latest_message_content: msg.content,
-          latest_message_at: msg.created_at,
-          latest_direction: msg.direction,
-          unread_count: 0,
-        })
-      }
-      if (msg.direction === 'received' && msg.read_at === null) {
-        byUser.get(key)!.unread_count++
-      }
-    }
-
-    const inbox = Array.from(byUser.values())
-      .sort((a, b) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime())
+    // latest_message_at降順でソート（RPC結果はDISTINCT ON順）
+    const inbox = (rpcInbox ?? [])
+      .sort((a: any, b: any) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime())
 
     return res.status(200).json({ inbox })
   } catch (error) {

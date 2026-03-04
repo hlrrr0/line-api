@@ -59,6 +59,7 @@ export default function FormByIdPage() {
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [isEdit, setIsEdit] = useState(false)
   const [error, setError] = useState('')
   const [metaPixelId, setMetaPixelId] = useState<string | null>(null)
 
@@ -81,6 +82,30 @@ export default function FormByIdPage() {
       })
       .catch(() => setError('フォームの読み込みに失敗しました'))
   }, [tenantKey, formId])
+
+  // 既存回答をプリフィル
+  useEffect(() => {
+    if (!tenantKey || !formId || !userId || !formDefinition) return
+
+    fetch(`/api/form/response?tenantKey=${tenantKey}&userId=${userId}&formId=${formId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.formData) {
+          setIsEdit(true)
+          const prefilled: Record<string, any> = {}
+          formDefinition.fields.forEach((field: FormField) => {
+            const saved = data.formData[field.id]
+            if (saved !== undefined) {
+              prefilled[field.id] = saved
+            } else {
+              prefilled[field.id] = field.type === 'checkbox' ? [] : ''
+            }
+          })
+          setFormData(prefilled)
+        }
+      })
+      .catch(() => { /* ignore */ })
+  }, [tenantKey, formId, userId, formDefinition])
 
   useEffect(() => {
     if (!tenantKey) return
@@ -332,7 +357,7 @@ export default function FormByIdPage() {
               .map(field => renderField(field))}
 
             <button type="submit" disabled={isSubmitting} style={{ ...styles.submitButton, ...(isSubmitting ? styles.submitButtonDisabled : {}) }}>
-              {isSubmitting ? '送信中...' : '送信する'}
+              {isSubmitting ? '送信中...' : isEdit ? '回答を更新する' : '送信する'}
             </button>
           </form>
           <p style={styles.footerNote}>ご入力いただいた情報は、サービス向上のために利用いたします。</p>

@@ -62,6 +62,7 @@ export default function FormPage() {
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [isEdit, setIsEdit] = useState(false)
   const [metaPixelId, setMetaPixelId] = useState<string | null>(null)
 
   // フォーム定義を取得
@@ -113,6 +114,42 @@ export default function FormPage() {
     const s = router.query.source
     if (s && typeof s === 'string') setSource(s)
   }, [router.isReady, router.query.source])
+
+  // 既存回答をプリフィル
+  useEffect(() => {
+    if (!tenantKey || !userId) return
+    const formIdParam = formDefinition ? `&formId=${formDefinition.id}` : ''
+
+    fetch(`/api/form/response?tenantKey=${tenantKey}&userId=${userId}${formIdParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.formData) {
+          setIsEdit(true)
+          if (useDefaultForm) {
+            setFormData({
+              name: data.formData.name || '',
+              age: data.formData.age || '',
+              gender: data.formData.gender || '',
+              interests: data.formData.interests || [],
+              email: data.formData.email || '',
+              phone: data.formData.phone || '',
+            })
+          } else if (formDefinition) {
+            const prefilled: Record<string, any> = {}
+            formDefinition.fields.forEach((field: FormField) => {
+              const saved = data.formData[field.id]
+              if (saved !== undefined) {
+                prefilled[field.id] = saved
+              } else {
+                prefilled[field.id] = field.type === 'checkbox' ? [] : ''
+              }
+            })
+            setFormData(prefilled)
+          }
+        }
+      })
+      .catch(() => { /* ignore */ })
+  }, [tenantKey, userId, formDefinition, useDefaultForm])
 
   useEffect(() => {
     if (!tenantKey) return
@@ -499,7 +536,7 @@ export default function FormPage() {
             )}
 
             <button type="submit" disabled={isSubmitting} style={{ ...styles.submitButton, ...(isSubmitting ? styles.submitButtonDisabled : {}) }}>
-              {isSubmitting ? '送信中...' : '送信する'}
+              {isSubmitting ? '送信中...' : isEdit ? '回答を更新する' : '送信する'}
             </button>
           </form>
 

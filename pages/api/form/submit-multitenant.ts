@@ -59,19 +59,62 @@ export default async function handler(
     }
 
     // フォーム回答を保存（source付き、user_idは任意）
-    const responseData: Record<string, any> = {
-      tenant_id: tenant.id,
-      form_data: source ? { ...formData, _source: source } : formData,
-    }
-    if (user) responseData.user_id = user.id
-    if (formId) responseData.form_definition_id = formId
+    // LINE認証済みユーザーは1フォーム1回答（再回答は上書き）
+    const formDataToSave = source ? { ...formData, _source: source } : formData
+    const formDefId = formId || null
 
-    const { error: responseError } = await supabaseAdmin
-      .from('form_responses')
-      .insert(responseData)
+    if (user) {
+      // 既存の回答があるか確認
+      let existingQuery = supabaseAdmin
+        .from('form_responses')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('user_id', user.id)
 
-    if (responseError) {
-      throw responseError
+      if (formDefId) {
+        existingQuery = existingQuery.eq('form_definition_id', formDefId)
+      } else {
+        existingQuery = existingQuery.is('form_definition_id', null)
+      }
+
+      const { data: existing } = await existingQuery.maybeSingle()
+
+      if (existing) {
+        // 既存回答を上書き
+        const { error: updateError } = await supabaseAdmin
+          .from('form_responses')
+          .update({
+            form_data: formDataToSave,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+        if (updateError) throw updateError
+      } else {
+        // 新規回答
+        const responseData: Record<string, any> = {
+          tenant_id: tenant.id,
+          user_id: user.id,
+          form_data: formDataToSave,
+        }
+        if (formDefId) responseData.form_definition_id = formDefId
+
+        const { error: insertError } = await supabaseAdmin
+          .from('form_responses')
+          .insert(responseData)
+        if (insertError) throw insertError
+      }
+    } else {
+      // 未認証ユーザーは常に新規作成
+      const responseData: Record<string, any> = {
+        tenant_id: tenant.id,
+        form_data: formDataToSave,
+      }
+      if (formDefId) responseData.form_definition_id = formDefId
+
+      const { error: insertError } = await supabaseAdmin
+        .from('form_responses')
+        .insert(responseData)
+      if (insertError) throw insertError
     }
 
     // タグの自動付与（LINE認証済みユーザーのみ）

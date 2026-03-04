@@ -20,7 +20,8 @@
       "Bash(head -80 /Users/hiroki/git/Line-api/pages/api/admin/responses/[id].ts)",
       "Bash(ls /Users/hiroki/git/Line-api/pages/admin/[tenantKey]/)",
       "Bash(npx next build)",
-      "Bash(lsof -ti:3000)"
+      "Bash(lsof -ti:3000)",
+      "Bash(ls -la /Users/hiroki/git/Line-api/*.md)"
     ]
   }
 }

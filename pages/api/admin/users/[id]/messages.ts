@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { data: user } = await supabaseAdmin
       .from('users')
-      .select('line_user_id')
+      .select('line_user_id, tenant_id')
       .eq('id', id)
       .single()
 
@@ -25,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let query = supabaseAdmin
       .from('messages')
       .select('*')
+      .eq('tenant_id', user.tenant_id)
       .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
       .order('created_at', { ascending: false })
       .limit(50)
