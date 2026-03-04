@@ -72,7 +72,6 @@ export default function TenantsPage() {
           line_channel_access_token: '',
           liff_id: '',
           meta_pixel_id: '',
-          welcome_message: '',
         })
         setShowForm(false)
         setEditingTenant(null)
