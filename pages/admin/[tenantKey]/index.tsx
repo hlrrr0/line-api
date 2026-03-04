@@ -43,6 +43,7 @@ export default function TenantDashboard() {
         { href: `/admin/${tenantKey}/segments`, icon: '🎯', title: 'セグメント管理', description: 'フォーム回答で絞り込み条件を設定' },
         { href: `/admin/${tenantKey}/delivery/history`, icon: '📋', title: '配信履歴', description: '過去の配信結果を確認' },
         { href: `/admin/${tenantKey}/welcome-message`, icon: '👋', title: '友だち追加メッセージ', description: '友だち追加時の自動メッセージ設定' },
+        { href: `/admin/${tenantKey}/auto-replies`, icon: '🤖', title: '自動返信', description: 'キーワードに応じた自動返信ルール設定' },
       ],
     },
     {

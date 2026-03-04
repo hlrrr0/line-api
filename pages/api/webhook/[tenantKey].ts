@@ -178,6 +178,9 @@ async function handleMessage(event: MessageEvent, tenant: any) {
         content: userMessage,
       })
     if (msgError) console.error('Error saving received message:', msgError)
+
+    // 自動返信チェック
+    await checkAutoReply(tenant, lineUserId, userMessage)
   } else {
     // テキスト以外（画像・スタンプ等）はプレースホルダーで保存
     const placeholders: Record<string, string> = {
@@ -200,5 +203,49 @@ async function handleMessage(event: MessageEvent, tenant: any) {
         content,
       })
     if (msgError) console.error('Error saving received message:', msgError)
+  }
+}
+
+// 自動返信チェック
+async function checkAutoReply(tenant: any, lineUserId: string, userMessage: string) {
+  try {
+    const { data: rules } = await supabaseAdmin
+      .from('auto_reply_rules')
+      .select('*')
+      .eq('tenant_id', tenant.id)
+      .eq('is_active', true)
+      .order('priority', { ascending: false })
+
+    if (!rules || rules.length === 0) return
+
+    for (const rule of rules) {
+      let matched = false
+      const msg = userMessage.trim()
+      const kw = rule.keyword
+
+      switch (rule.match_type) {
+        case 'exact':
+          matched = msg === kw
+          break
+        case 'starts_with':
+          matched = msg.startsWith(kw)
+          break
+        case 'contains':
+        default:
+          matched = msg.includes(kw)
+          break
+      }
+
+      if (matched && rule.reply_messages?.length > 0) {
+        if (rule.reply_messages.length === 1) {
+          await sendTextMessage(tenant, lineUserId, rule.reply_messages[0])
+        } else {
+          await sendMultipleTextMessages(tenant, lineUserId, rule.reply_messages)
+        }
+        return // 最初にマッチしたルールのみ返信
+      }
+    }
+  } catch (error) {
+    console.error('Error checking auto reply:', error)
   }
 }

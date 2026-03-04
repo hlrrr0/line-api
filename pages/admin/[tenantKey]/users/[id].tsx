@@ -15,11 +15,18 @@ interface User {
   assignee_name?: string
 }
 
+interface FormField {
+  id: string
+  label: string
+  type: string
+  options?: { value: string; label: string }[]
+}
+
 interface FormResponse {
   id: string
   created_at: string
   form_data: Record<string, any>
-  form_definitions?: { name: string }
+  form_definitions?: { name: string; fields?: FormField[] }
 }
 
 interface Message {
@@ -261,6 +268,38 @@ export default function UserDetailPage() {
       })
       fetchData()
     } catch { /* */ }
+  }
+
+  // フォーム回答のフィールドラベル取得
+  const getFieldLabel = (response: FormResponse, fieldId: string): string => {
+    const fields = response.form_definitions?.fields
+    if (fields && Array.isArray(fields)) {
+      const field = fields.find((f: FormField) => f.id === fieldId)
+      if (field?.label) return field.label
+    }
+    return fieldId
+  }
+
+  // フォーム回答の値をラベルに変換（select/radio/checkbox対応）
+  const renderFieldValue = (response: FormResponse, fieldId: string, value: any): string => {
+    const fields = response.form_definitions?.fields
+    const field = fields?.find((f: FormField) => f.id === fieldId)
+    const options = field?.options
+
+    if (Array.isArray(value)) {
+      if (options) {
+        return value.map(v => {
+          const opt = options.find(o => o.value === String(v))
+          return opt ? opt.label : String(v)
+        }).join(', ')
+      }
+      return value.join(', ')
+    }
+    if (options) {
+      const opt = options.find(o => o.value === String(value))
+      if (opt) return opt.label
+    }
+    return String(value ?? '-')
   }
 
   // インボックスのフィルタリング
@@ -582,9 +621,9 @@ export default function UserDetailPage() {
                           <tbody>
                             {Object.entries(response.form_data || {}).map(([key, value]) => (
                               <tr key={key}>
-                                <td style={st.activityKey}>{key}</td>
+                                <td style={st.activityKey}>{getFieldLabel(response, key)}</td>
                                 <td style={st.activityValue}>
-                                  {Array.isArray(value) ? value.join(', ') : String(value ?? '')}
+                                  {renderFieldValue(response, key, value)}
                                 </td>
                               </tr>
                             ))}

@@ -11,7 +11,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { tenantKey, userId, formData, source } = req.body
+  const { tenantKey, userId, formData, source, formId } = req.body
 
   if (!tenantKey || !formData) {
     return res.status(400).json({ error: 'Missing required fields' })
@@ -64,6 +64,7 @@ export default async function handler(
       form_data: source ? { ...formData, _source: source } : formData,
     }
     if (user) responseData.user_id = user.id
+    if (formId) responseData.form_definition_id = formId
 
     const { error: responseError } = await supabaseAdmin
       .from('form_responses')

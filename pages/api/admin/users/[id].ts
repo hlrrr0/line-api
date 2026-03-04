@@ -28,12 +28,44 @@ async function handleGet(id: string, res: NextApiResponse) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    // フォーム回答履歴を取得
-    const { data: responses } = await supabaseAdmin
+    // フォーム回答履歴を取得（form_definition_idがある場合はJOIN）
+    const { data: rawResponses } = await supabaseAdmin
       .from('form_responses')
-      .select('*, form_definitions(name)')
+      .select('*, form_definitions(name, fields)')
       .eq('user_id', id)
       .order('created_at', { ascending: false })
+
+    // form_definition_idが無い旧データ向け: テナントのフォーム定義を取得してマッチング
+    const responses = rawResponses || []
+    const responsesWithoutDef = responses.filter((r: any) => !r.form_definitions)
+
+    if (responsesWithoutDef.length > 0 && user.tenant_id) {
+      const { data: allForms } = await supabaseAdmin
+        .from('form_definitions')
+        .select('id, name, fields')
+        .eq('tenant_id', user.tenant_id)
+
+      if (allForms && allForms.length > 0) {
+        for (const resp of responsesWithoutDef) {
+          const formDataKeys = Object.keys(resp.form_data || {}).filter(k => !k.startsWith('_'))
+          let bestMatch: any = null
+          let bestScore = 0
+
+          for (const form of allForms) {
+            const fieldIds = (form.fields || []).map((f: any) => f.id)
+            const matches = formDataKeys.filter((k: string) => fieldIds.includes(k)).length
+            if (matches > bestScore) {
+              bestScore = matches
+              bestMatch = form
+            }
+          }
+
+          if (bestMatch && bestScore > 0) {
+            resp.form_definitions = { name: bestMatch.name, fields: bestMatch.fields }
+          }
+        }
+      }
+    }
 
     // メッセージ履歴を取得（user_id が null の旧データは line_user_id で照合）
     const { data: messages } = await supabaseAdmin
