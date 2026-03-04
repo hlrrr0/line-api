@@ -6,10 +6,18 @@ import { validateSignature, getLineProfile, sendTextMessage } from '@/lib/line-m
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
+    bodyParser: false,
   },
+}
+
+// raw body を読み取るヘルパー
+function getRawBody(req: NextApiRequest): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk: Buffer) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+    req.on('error', reject)
+  })
 }
 
 export default async function handler(
@@ -33,15 +41,15 @@ export default async function handler(
     return res.status(404).json({ error: 'Tenant not found' })
   }
 
-  // 署名検証
+  // raw body を取得して署名検証
+  const rawBody = await getRawBody(req)
   const signature = req.headers['x-line-signature'] as string
-  const body = JSON.stringify(req.body)
 
-  if (!validateSignature(body, signature, tenant.line_channel_secret)) {
+  if (!validateSignature(rawBody, signature, tenant.line_channel_secret)) {
     return res.status(401).json({ error: 'Invalid signature' })
   }
 
-  const { events } = req.body
+  const { events } = JSON.parse(rawBody)
 
   try {
     await Promise.all(events.map((event: WebhookEvent) => handleEvent(event, tenant)))
