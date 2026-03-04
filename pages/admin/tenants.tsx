@@ -72,6 +72,7 @@ export default function TenantsPage() {
           line_channel_access_token: '',
           liff_id: '',
           meta_pixel_id: '',
+          welcome_message: '',
         })
         setShowForm(false)
         setEditingTenant(null)
@@ -111,6 +112,7 @@ export default function TenantsPage() {
       line_channel_access_token: '',
       liff_id: '',
       meta_pixel_id: '',
+      welcome_message: '',
     })
     setShowForm(false)
   }
@@ -121,8 +123,10 @@ export default function TenantsPage() {
     alert('Webhook URLをコピーしました')
   }
 
-  const copyLiffUrl = (tenantKey: string) => {
-    const url = `${window.location.origin}/form/${tenantKey}`
+  const copyLiffUrl = (tenant: Tenant) => {
+    const url = tenant.liff_id
+      ? `https://liff.line.me/${tenant.liff_id}`
+      : `${window.location.origin}/form/${tenant.tenant_key}`
     navigator.clipboard.writeText(url)
     alert('LIFF URLをコピーしました')
   }
@@ -324,14 +328,17 @@ export default function TenantsPage() {
                     <div style={styles.urlRow}>
                       <span style={styles.urlLabel}>LIFF URL:</span>
                       <button
-                        onClick={() => copyLiffUrl(tenant.tenant_key)}
+                        onClick={() => copyLiffUrl(tenant)}
                         style={styles.copyButton}
                       >
                         📋 コピー
                       </button>
                     </div>
                     <code style={styles.urlCode}>
-                      /form/{tenant.tenant_key}
+                      {tenant.liff_id
+                        ? `https://liff.line.me/${tenant.liff_id}`
+                        : `/form/${tenant.tenant_key}`
+                      }
                     </code>
                   </div>
 

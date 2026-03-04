@@ -9,6 +9,7 @@ export interface Tenant {
   line_channel_access_token: string
   liff_id?: string
   meta_pixel_id?: string
+  welcome_messages?: string[]
   is_active: boolean
   settings: Record<string, any>
   created_at: string

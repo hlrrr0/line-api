@@ -30,6 +30,23 @@ export async function sendTextMessage(
 }
 
 /**
+ * 複数テキストメッセージを一度に送信（最大5吹き出し）
+ */
+export async function sendMultipleTextMessages(
+  tenant: Tenant,
+  userId: string,
+  texts: string[]
+) {
+  if (texts.length === 0) return
+  const client = createLineClient(tenant)
+  const messages = texts.slice(0, 5).map(text => ({
+    type: 'text' as const,
+    text,
+  }))
+  return await client.pushMessage(userId, messages)
+}
+
+/**
  * 複数ユーザーに送信
  */
 export async function sendBulkMessages(

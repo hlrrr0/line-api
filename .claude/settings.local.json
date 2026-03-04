@@ -17,7 +17,8 @@
       "Bash(find /Users/hiroki/git/Line-api/pages/form* -type f)",
       "Bash(git diff pages/api/webhook/[tenantKey].ts)",
       "Bash(npx tsc --noEmit)",
-      "Bash(head -80 /Users/hiroki/git/Line-api/pages/api/admin/responses/[id].ts)"
+      "Bash(head -80 /Users/hiroki/git/Line-api/pages/api/admin/responses/[id].ts)",
+      "Bash(ls /Users/hiroki/git/Line-api/pages/admin/[tenantKey]/)"
     ]
   }
 }

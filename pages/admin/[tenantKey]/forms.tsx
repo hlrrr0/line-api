@@ -34,6 +34,7 @@ export default function FormsPage() {
   const [loading, setLoading] = useState(true)
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingForm, setEditingForm] = useState<FormDefinition | null>(null)
+  const [liffId, setLiffId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,7 +46,12 @@ export default function FormsPage() {
   const [editingField, setEditingField] = useState<FormField | null>(null)
 
   useEffect(() => {
-    if (tenantKey) fetchForms()
+    if (!tenantKey) return
+    fetchForms()
+    fetch(`/api/tenants/${tenantKey}`)
+      .then(r => r.json())
+      .then(data => { if (data.tenant?.liff_id) setLiffId(data.tenant.liff_id) })
+      .catch(() => {})
   }, [tenantKey])
 
   const fetchForms = async () => {
@@ -190,11 +196,16 @@ export default function FormsPage() {
                   <div style={styles.formInfo}><span>フィールド数: {form.fields?.length || 0}</span></div>
                   <div style={styles.formUrl}>
                     <code style={styles.urlText}>
-                      {typeof window !== 'undefined' ? window.location.origin : ''}/form/{tenantKey}/{form.id}
+                      {liffId
+                        ? `https://liff.line.me/${liffId}/form/${tenantKey}/${form.id}`
+                        : `${typeof window !== 'undefined' ? window.location.origin : ''}/form/${tenantKey}/${form.id}`
+                      }
                     </code>
                     <button
                       onClick={() => {
-                        const url = `${window.location.origin}/form/${tenantKey}/${form.id}`
+                        const url = liffId
+                          ? `https://liff.line.me/${liffId}/form/${tenantKey}/${form.id}`
+                          : `${window.location.origin}/form/${tenantKey}/${form.id}`
                         navigator.clipboard.writeText(url).then(() => alert('URLをコピーしました'))
                       }}
                       style={styles.copyButton}

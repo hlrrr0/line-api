@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { WebhookEvent, MessageEvent, FollowEvent, UnfollowEvent } from '@line/bot-sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTenantByKey } from '@/lib/tenant'
-import { validateSignature, getLineProfile, sendTextMessage } from '@/lib/line-multitenant'
+import { validateSignature, getLineProfile, sendTextMessage, sendMultipleTextMessages } from '@/lib/line-multitenant'
 
 export const config = {
   api: {
@@ -103,16 +103,31 @@ async function handleFollow(event: FollowEvent, tenant: any) {
       console.error('Error saving user:', error)
     }
 
-    // ウェルカムメッセージ送信（LIFFフォームURLを含む）
+    // ウェルカムメッセージ送信
     const formUrl = tenant.liff_id
       ? `https://liff.line.me/${tenant.liff_id}`
       : null
 
-    const welcomeText = formUrl
-      ? `ご登録ありがとうございます！\n\nアンケートフォームにご協力いただけると幸いです。\n下記のリンクからご回答ください。\n${formUrl}`
-      : 'ご登録ありがとうございます！'
+    const customMessages = tenant.welcome_messages && tenant.welcome_messages.length > 0
+      ? tenant.welcome_messages
+      : null
 
-    await sendTextMessage(tenant, userId, welcomeText)
+    if (customMessages) {
+      // カスタムメッセージ（変数を置換）
+      const userName = profile?.displayName || ''
+      const resolved = customMessages.map((msg: string) =>
+        msg
+          .replace(/\{liff_url\}/g, formUrl || '')
+          .replace(/\{user_name\}/g, userName)
+      )
+      await sendMultipleTextMessages(tenant, userId, resolved)
+    } else {
+      // デフォルトメッセージ
+      const welcomeText = formUrl
+        ? `ご登録ありがとうございます！\n\nアンケートフォームにご協力いただけると幸いです。\n下記のリンクからご回答ください。\n${formUrl}`
+        : 'ご登録ありがとうございます！'
+      await sendTextMessage(tenant, userId, welcomeText)
+    }
   } catch (error) {
     console.error('Error handling follow event:', error)
   }
