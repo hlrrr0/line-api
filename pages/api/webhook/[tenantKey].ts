@@ -127,13 +127,13 @@ async function handleMessage(event: MessageEvent, tenant: any) {
   const lineUserId = event.source.userId
   if (!lineUserId) return
 
-  // users テーブルから内部 user_id を取得
+  // users テーブルから内部 user_id を取得（tenant_id が null の旧データも対象）
   const { data: userRow } = await supabaseAdmin
     .from('users')
     .select('id')
-    .eq('tenant_id', tenant.id)
+    .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
     .eq('line_user_id', lineUserId)
-    .single()
+    .maybeSingle()
   const internalUserId: string | null = userRow?.id ?? null
 
   if (event.message.type === 'text') {

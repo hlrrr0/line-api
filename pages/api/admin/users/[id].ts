@@ -29,11 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('user_id', id)
       .order('created_at', { ascending: false })
 
-    // メッセージ履歴を取得
+    // メッセージ履歴を取得（user_id が null の旧データは line_user_id で照合）
     const { data: messages } = await supabaseAdmin
       .from('messages')
       .select('*')
-      .eq('user_id', id)
+      .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
       .order('created_at', { ascending: true })
       .limit(200)
 
