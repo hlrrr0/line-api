@@ -64,6 +64,8 @@ export default function FormPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [isEdit, setIsEdit] = useState(false)
   const [metaPixelId, setMetaPixelId] = useState<string | null>(null)
+  const [fbclid, setFbclid] = useState<string | null>(null)
+  const [capiSent, setCapiSent] = useState(false)
 
   // フォーム定義を取得
   useEffect(() => {
@@ -108,12 +110,14 @@ export default function FormPage() {
     fetchFormDefinition()
   }, [tenantKey])
 
-  // URLのsourceパラメータを取得
+  // URLのsource/fbclidパラメータを取得
   useEffect(() => {
     if (!router.isReady) return
     const s = router.query.source
     if (s && typeof s === 'string') setSource(s)
-  }, [router.isReady, router.query.source])
+    const fc = router.query.fbclid
+    if (fc && typeof fc === 'string') setFbclid(fc)
+  }, [router.isReady, router.query.source, router.query.fbclid])
 
   // 既存回答をプリフィル
   useEffect(() => {
@@ -221,6 +225,27 @@ export default function FormPage() {
 
     init()
   }, [tenantKey])
+
+  // LIFF URL オープン時に Meta CAPI で Lead イベント送信
+  useEffect(() => {
+    if (!ready || !tenantKey || capiSent) return
+    if (!fbclid) return // fbclid がなければ CAPI 送信不要（Pixel で対応）
+
+    setCapiSent(true)
+
+    const fbc = `fb.1.${Date.now()}.${fbclid}`
+
+    fetch('/api/capi/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantKey,
+        fbc,
+        eventSourceUrl: window.location.href,
+        lineUserId: userId || null,
+      }),
+    }).catch((err) => console.error('CAPI lead event error:', err))
+  }, [ready, tenantKey, fbclid, capiSent, userId])
 
   const handleInputChange = (fieldId: string, value: any) => {
     setFormData({ ...formData, [fieldId]: value })

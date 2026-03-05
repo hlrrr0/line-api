@@ -86,7 +86,7 @@ async function handleFollow(event: FollowEvent, tenant: any) {
     const profile = await getLineProfile(tenant, userId)
 
     // ユーザー情報を保存（テナントIDを含める）
-    const { error } = await supabaseAdmin
+    const { data: upsertedUser, error } = await supabaseAdmin
       .from('users')
       .upsert({
         tenant_id: tenant.id,
@@ -98,10 +98,14 @@ async function handleFollow(event: FollowEvent, tenant: any) {
       }, {
         onConflict: 'tenant_id,line_user_id',
       })
+      .select('id')
+      .single()
 
     if (error) {
       console.error('Error saving user:', error)
     }
+
+    const internalUserId = upsertedUser?.id ?? null
 
     // ウェルカムメッセージ送信
     const formUrl = tenant.liff_id
@@ -112,6 +116,8 @@ async function handleFollow(event: FollowEvent, tenant: any) {
       ? tenant.welcome_messages
       : null
 
+    let sentMessages: string[] = []
+
     if (customMessages) {
       // カスタムメッセージ（変数を置換）
       const userName = profile?.displayName || ''
@@ -121,12 +127,32 @@ async function handleFollow(event: FollowEvent, tenant: any) {
           .replace(/\{user_name\}/g, userName)
       )
       await sendMultipleTextMessages(tenant, userId, resolved)
+      sentMessages = resolved
     } else {
       // デフォルトメッセージ
       const welcomeText = formUrl
         ? `ご登録ありがとうございます！\n\nアンケートフォームにご協力いただけると幸いです。\n下記のリンクからご回答ください。\n${formUrl}`
         : 'ご登録ありがとうございます！'
       await sendTextMessage(tenant, userId, welcomeText)
+      sentMessages = [welcomeText]
+    }
+
+    // 送信メッセージをDBに保存（チャット画面に表示するため）
+    if (sentMessages.length > 0) {
+      Promise.all(
+        sentMessages.map((msg) =>
+          supabaseAdmin
+            .from('messages')
+            .insert({
+              tenant_id: tenant.id,
+              user_id: internalUserId,
+              line_user_id: userId,
+              direction: 'sent',
+              message_type: 'text',
+              content: msg,
+            })
+        )
+      ).catch(err => console.error('Error saving welcome messages:', err))
     }
   } catch (error) {
     console.error('Error handling follow event:', error)
