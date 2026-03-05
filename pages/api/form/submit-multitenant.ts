@@ -85,7 +85,6 @@ export default async function handler(
           .from('form_responses')
           .update({
             form_data: formDataToSave,
-            updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id)
         if (updateError) throw updateError
