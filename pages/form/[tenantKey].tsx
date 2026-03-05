@@ -474,6 +474,18 @@ export default function FormPage() {
           )}
         </div>
 
+        {/* サービス紹介 */}
+        <div style={styles.formContainer}>
+          <div style={styles.introCard}>
+            <p style={styles.introTitle}>鮨キャリは【寿司職人専門】のキャリア相談サービスです。</p>
+            <ul style={styles.introList}>
+              <li style={styles.introItem}><span style={{color: '#06c755', flexShrink: 0}}>&#10004;</span> 無理な転職営業なし</li>
+              <li style={styles.introItem}><span style={{color: '#06c755', flexShrink: 0}}>&#10004;</span> 在職中・匿名相談OK</li>
+              <li style={styles.introItem}><span style={{color: '#06c755', flexShrink: 0}}>&#10004;</span> 今すぐ転職しなくてもOK</li>
+            </ul>
+          </div>
+        </div>
+
         {/* フォーム本体 */}
         <div style={styles.formContainer}>
           <form onSubmit={handleSubmit} style={styles.form}>
@@ -663,6 +675,38 @@ const styles = {
     color: 'rgba(255,255,255,0.85)',
     margin: 0,
     lineHeight: '1.5',
+  },
+
+  // サービス紹介カード
+  introCard: {
+    background: '#fff',
+    borderRadius: '12px',
+    padding: '18px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    marginBottom: '0',
+  },
+  introTitle: {
+    fontSize: '15px',
+    fontWeight: '700' as const,
+    color: '#333',
+    margin: '0 0 12px 0',
+    lineHeight: '1.5',
+  },
+  introList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px',
+  },
+  introItem: {
+    fontSize: '14px',
+    color: '#333',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    // CSS ::before でチェックマークを付与できないので、テキストに含める
   },
 
   // フォームコンテナ
