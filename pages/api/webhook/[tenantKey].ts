@@ -139,7 +139,7 @@ async function handleFollow(event: FollowEvent, tenant: any) {
 
     // 送信メッセージをDBに保存（チャット画面に表示するため）
     if (sentMessages.length > 0) {
-      Promise.all(
+      const results = await Promise.all(
         sentMessages.map((msg) =>
           supabaseAdmin
             .from('messages')
@@ -152,7 +152,10 @@ async function handleFollow(event: FollowEvent, tenant: any) {
               content: msg,
             })
         )
-      ).catch(err => console.error('Error saving welcome messages:', err))
+      )
+      results.forEach((r, i) => {
+        if (r.error) console.error(`Error saving welcome message ${i}:`, r.error)
+      })
     }
   } catch (error) {
     console.error('Error handling follow event:', error)
@@ -181,12 +184,37 @@ async function handleMessage(event: MessageEvent, tenant: any) {
   if (!lineUserId) return
 
   // users テーブルから内部 user_id を取得（tenant_id が null の旧データも対象）
-  const { data: userRow } = await supabaseAdmin
+  let { data: userRow } = await supabaseAdmin
     .from('users')
     .select('id')
     .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
     .eq('line_user_id', lineUserId)
     .maybeSingle()
+
+  // ユーザーが未登録の場合、プロフィールを取得して自動作成
+  if (!userRow) {
+    try {
+      const profile = await getLineProfile(tenant, lineUserId)
+      const { data: newUser } = await supabaseAdmin
+        .from('users')
+        .upsert({
+          tenant_id: tenant.id,
+          line_user_id: lineUserId,
+          display_name: profile?.displayName || '',
+          picture_url: profile?.pictureUrl || '',
+          status_message: profile?.statusMessage || '',
+          is_blocked: false,
+        }, {
+          onConflict: 'tenant_id,line_user_id',
+        })
+        .select('id')
+        .single()
+      if (newUser) userRow = newUser
+    } catch (err) {
+      console.error('Error auto-creating user on message:', err)
+    }
+  }
+
   const internalUserId: string | null = userRow?.id ?? null
 
   if (event.message.type === 'text') {
