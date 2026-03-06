@@ -21,7 +21,9 @@
       "Bash(ls /Users/hiroki/git/Line-api/pages/admin/[tenantKey]/)",
       "Bash(npx next build)",
       "Bash(lsof -ti:3000)",
-      "Bash(ls -la /Users/hiroki/git/Line-api/*.md)"
+      "Bash(ls -la /Users/hiroki/git/Line-api/*.md)",
+      "Bash(grep -E '\"\"\\(jest|vitest|test|@testing\\)\"\"')",
+      "Bash(npm install --save-dev vitest @vitejs/plugin-react)"
     ]
   }
 }
