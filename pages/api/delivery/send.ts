@@ -82,11 +82,11 @@ export default async function handler(
 
       targetUsers = await getUsersBySegment(segment.conditions, tenant.id)
     } else {
-      // 全体配信（tenant_id が null の旧データも含む）
+      // 全体配信
       const { data: users } = await supabaseAdmin
         .from('users')
         .select('*')
-        .or(`tenant_id.eq.${tenant.id},tenant_id.is.null`)
+        .eq('tenant_id', tenant.id)
         .eq('is_blocked', false)
 
       targetUsers = users || []
@@ -160,7 +160,7 @@ async function getUsersBySegment(conditions: any, tenantId: string): Promise<any
   let query = supabaseAdmin
     .from('users')
     .select('*')
-    .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
+    .eq('tenant_id', tenantId)
     .eq('is_blocked', false)
 
   // フォーム回答フィールドによる絞り込み
@@ -168,7 +168,7 @@ async function getUsersBySegment(conditions: any, tenantId: string): Promise<any
     const { data: responses } = await supabaseAdmin
       .from('form_responses')
       .select('user_id, form_data')
-      .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
+      .eq('tenant_id', tenantId)
 
     if (responses) {
       const matchingUserIds = responses
