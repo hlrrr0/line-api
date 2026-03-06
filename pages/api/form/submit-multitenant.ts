@@ -155,15 +155,17 @@ export default async function handler(
     // Slack通知（テナントにwebhook URLが設定されている場合）
     const slackWebhookUrl = tenant.settings?.slack_webhook_url
     if (slackWebhookUrl) {
-      // フォーム名を取得
+      // フォーム定義（名前 + フィールド情報）を取得
       let formName: string | null = null
+      let formFields: any[] | null = null
       if (formDefId) {
         const { data: formDef } = await supabaseAdmin
           .from('form_definitions')
-          .select('name')
+          .select('name, fields')
           .eq('id', formDefId)
           .single()
         formName = formDef?.name || null
+        formFields = formDef?.fields || null
       }
 
       const host = req.headers.host || 'localhost:3000'
@@ -175,6 +177,7 @@ export default async function handler(
         userName: user?.display_name || null,
         formName,
         formData,
+        formFields,
         adminUrl,
       }).catch(err => console.error('Slack notification error:', err))
     }

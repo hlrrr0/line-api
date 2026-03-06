@@ -22,11 +22,17 @@ CREATE INDEX IF NOT EXISTS idx_messages_unread
   ON messages(tenant_id, user_id, direction)
   WHERE read_at IS NULL;
 
+-- インボックス集計用（tenant_id + user_id + created_at降順）
+CREATE INDEX IF NOT EXISTS idx_messages_inbox
+  ON messages(tenant_id, user_id, created_at DESC)
+  WHERE user_id IS NOT NULL;
+
 -- ===========================================
 -- 2. インボックス集計用RPC関数
 -- ===========================================
 
 -- ユーザーごとの最新メッセージ + 未読数を1クエリで取得
+-- user_idベースで集計（user_idがNULLのメッセージは除外）
 CREATE OR REPLACE FUNCTION get_inbox(p_tenant_id UUID)
 RETURNS TABLE (
   user_id UUID,
@@ -38,22 +44,38 @@ RETURNS TABLE (
   latest_direction VARCHAR,
   unread_count BIGINT
 ) AS $$
-  SELECT DISTINCT ON (COALESCE(m.user_id::text, m.line_user_id))
-    m.user_id,
-    m.line_user_id,
+  WITH unread AS (
+    SELECT m2.user_id, COUNT(*) AS cnt
+    FROM messages m2
+    WHERE m2.tenant_id = p_tenant_id
+      AND m2.direction = 'received'
+      AND m2.read_at IS NULL
+      AND m2.user_id IS NOT NULL
+    GROUP BY m2.user_id
+  ),
+  latest AS (
+    SELECT DISTINCT ON (m.user_id)
+      m.user_id,
+      m.line_user_id,
+      m.content,
+      m.created_at,
+      m.direction
+    FROM messages m
+    WHERE m.tenant_id = p_tenant_id
+      AND m.user_id IS NOT NULL
+    ORDER BY m.user_id, m.created_at DESC
+  )
+  SELECT
+    l.user_id,
+    COALESCE(l.line_user_id, u.line_user_id) AS line_user_id,
     u.display_name,
     u.picture_url,
-    m.content AS latest_message_content,
-    m.created_at AS latest_message_at,
-    m.direction AS latest_direction,
-    (SELECT COUNT(*) FROM messages m2
-     WHERE m2.tenant_id = p_tenant_id
-     AND COALESCE(m2.user_id::text, m2.line_user_id) = COALESCE(m.user_id::text, m.line_user_id)
-     AND m2.direction = 'received'
-     AND m2.read_at IS NULL
-    ) AS unread_count
-  FROM messages m
-  LEFT JOIN users u ON u.id = m.user_id
-  WHERE m.tenant_id = p_tenant_id
-  ORDER BY COALESCE(m.user_id::text, m.line_user_id), m.created_at DESC
+    l.content AS latest_message_content,
+    l.created_at AS latest_message_at,
+    l.direction AS latest_direction,
+    COALESCE(ur.cnt, 0) AS unread_count
+  FROM latest l
+  LEFT JOIN users u ON u.id = l.user_id
+  LEFT JOIN unread ur ON ur.user_id = l.user_id
+  ORDER BY l.created_at DESC
 $$ LANGUAGE sql STABLE;

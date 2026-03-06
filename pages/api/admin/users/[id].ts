@@ -28,14 +28,37 @@ async function handleGet(id: string, res: NextApiResponse) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    // フォーム回答履歴を取得（form_definition_idがある場合はJOIN）
-    const { data: rawResponses } = await supabaseAdmin
-      .from('form_responses')
-      .select('*, form_definitions(name, fields)')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
+    // 独立したクエリを並列実行（4つのDBクエリを同時に発行）
+    const [
+      { data: rawResponses },
+      { data: messagesDesc },
+      { data: userTags },
+      { data: notes },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('form_responses')
+        .select('*, form_definitions(name, fields)')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('messages')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabaseAdmin
+        .from('user_tags')
+        .select('tag_id, tags(id, name)')
+        .eq('user_id', id),
+      supabaseAdmin
+        .from('user_notes')
+        .select('*')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false }),
+    ])
 
-    // form_definition_idが無い旧データ向け: テナントのフォーム定義を取得してマッチング
+    // フォーム回答: 旧データ向けのフォーム定義マッチング
     const responses = rawResponses || []
     const responsesWithoutDef = responses.filter((r: any) => !r.form_definitions)
 
@@ -67,39 +90,21 @@ async function handleGet(id: string, res: NextApiResponse) {
       }
     }
 
-    // メッセージ履歴を取得（最新50件、降順で取得して昇順に並び替え）
-    const { data: messagesDesc } = await supabaseAdmin
-      .from('messages')
-      .select('*')
-      .eq('tenant_id', user.tenant_id)
-      .or(`user_id.eq.${id},line_user_id.eq.${user.line_user_id}`)
-      .order('created_at', { ascending: false })
-      .limit(50)
     const messages = (messagesDesc ?? []).reverse()
 
-    // 未読メッセージを既読にする
-    const unreadIds = (messages ?? [])
+    // 未読メッセージを既読にする（レスポンスをブロックしない）
+    const unreadIds = messages
       .filter(m => m.direction === 'received' && m.read_at === null)
       .map(m => m.id)
     if (unreadIds.length > 0) {
-      await supabaseAdmin
+      supabaseAdmin
         .from('messages')
         .update({ read_at: new Date().toISOString() })
         .in('id', unreadIds)
+        .then(({ error: readErr }) => {
+          if (readErr) console.error('Error marking messages as read:', readErr)
+        })
     }
-
-    // タグを取得
-    const { data: userTags } = await supabaseAdmin
-      .from('user_tags')
-      .select('tag_id, tags(id, name)')
-      .eq('user_id', id)
-
-    // ノートを取得
-    const { data: notes } = await supabaseAdmin
-      .from('user_notes')
-      .select('*')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
 
     return res.status(200).json({
       user,

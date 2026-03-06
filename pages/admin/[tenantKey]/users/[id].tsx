@@ -176,17 +176,20 @@ export default function UserDetailPage() {
     }
   }
 
-  // 15秒ごとにメッセージを自動更新
+  // 15秒ごとにメッセージを自動更新（メッセージのみ取得）
   useEffect(() => {
-    if (!id) return
+    if (!id || !user?.tenant_id) return
     const timer = setInterval(() => {
-      fetch(`/api/admin/users/${id}`)
+      fetch(`/api/admin/messages?tenantKey=${tenantKey}&userId=${id}`)
         .then(r => r.json())
-        .then(data => setMessages(data.messages || []))
+        .then(data => {
+          const msgs = data.messages || []
+          if (msgs.length > 0) setMessages(msgs)
+        })
         .catch(console.error)
     }, 15000)
     return () => clearInterval(timer)
-  }, [id])
+  }, [id, tenantKey, user?.tenant_id])
 
   useEffect(() => {
     if (threadRef.current) {

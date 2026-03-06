@@ -35,17 +35,36 @@ export async function notifyFormSubmission(
     userName: string | null
     formName: string | null
     formData: Record<string, any>
+    formFields?: { id: string; label: string; options?: { value: string; label: string }[] }[] | null
     adminUrl: string
   }
 ) {
-  const { tenantName, userName, formName, formData, adminUrl } = params
+  const { tenantName, userName, formName, formData, formFields, adminUrl } = params
 
-  // _source などの内部フィールドを除外
+  // フィールドIDからラベルへのマッピング
+  const fieldMap = new Map(
+    (formFields || []).map(f => [f.id, f])
+  )
+
+  // _source などの内部フィールドを除外し、ラベルで表示
   const displayData = Object.entries(formData)
     .filter(([key]) => !key.startsWith('_'))
     .map(([key, value]) => {
-      const displayValue = Array.isArray(value) ? value.join(', ') : String(value ?? '')
-      return `*${key}:* ${displayValue}`
+      const field = fieldMap.get(key)
+      const label = field?.label || key
+
+      let displayValue: string
+      if (Array.isArray(value)) {
+        displayValue = value.map(v => {
+          const opt = field?.options?.find(o => o.value === String(v))
+          return opt ? opt.label : String(v)
+        }).join(', ')
+      } else {
+        const opt = field?.options?.find(o => o.value === String(value))
+        displayValue = opt ? opt.label : String(value ?? '')
+      }
+
+      return `*${label}:* ${displayValue}`
     })
     .join('\n')
 
