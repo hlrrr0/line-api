@@ -9,6 +9,7 @@ interface Tenant {
   line_channel_id: string
   liff_id?: string
   meta_pixel_id?: string
+  slack_webhook_url?: string
   is_active: boolean
   has_credentials: boolean
   created_at: string
@@ -27,6 +28,7 @@ export default function TenantsPage() {
     line_channel_access_token: '',
     liff_id: '',
     meta_pixel_id: '',
+    slack_webhook_url: '',
   })
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function TenantsPage() {
           line_channel_access_token: '',
           liff_id: '',
           meta_pixel_id: '',
+          slack_webhook_url: '',
         })
         setShowForm(false)
         setEditingTenant(null)
@@ -97,6 +100,7 @@ export default function TenantsPage() {
       line_channel_access_token: '',
       liff_id: tenant.liff_id || '',
       meta_pixel_id: tenant.meta_pixel_id || '',
+      slack_webhook_url: tenant.slack_webhook_url || '',
     })
     setShowForm(true)
   }
@@ -111,6 +115,7 @@ export default function TenantsPage() {
       line_channel_access_token: '',
       liff_id: '',
       meta_pixel_id: '',
+      slack_webhook_url: '',
     })
     setShowForm(false)
   }
@@ -244,6 +249,18 @@ export default function TenantsPage() {
                   style={styles.input}
                 />
                 <small style={styles.helpText}>LIFFフォームにMeta Pixelを埋め込みます（任意）</small>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Slack Webhook URL</label>
+                <input
+                  type="text"
+                  value={formData.slack_webhook_url}
+                  onChange={(e) => setFormData({ ...formData, slack_webhook_url: e.target.value })}
+                  placeholder="https://hooks.slack.com/services/..."
+                  style={styles.input}
+                />
+                <small style={styles.helpText}>フォーム回答時にSlackへ通知します（任意）</small>
               </div>
 
               <div style={{display: 'flex', gap: '10px'}}>

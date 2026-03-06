@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getAllTenants, createTenant, updateTenant } from '@/lib/tenant'
+import { getAllTenants, createTenant, updateTenant, getTenantById } from '@/lib/tenant'
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,6 +18,7 @@ export default async function handler(
         line_channel_id: t.line_channel_id,
         liff_id: t.liff_id,
         meta_pixel_id: t.meta_pixel_id || '',
+        slack_webhook_url: t.settings?.slack_webhook_url || '',
         is_active: t.is_active,
         has_credentials: !!(t.line_channel_access_token && t.line_channel_secret),
         created_at: t.created_at,
@@ -38,12 +39,16 @@ export default async function handler(
       line_channel_secret,
       line_channel_access_token,
       liff_id,
+      slack_webhook_url,
       settings,
     } = req.body
 
     if (!tenant_key || !name || !line_channel_id || !line_channel_secret || !line_channel_access_token) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
+
+    const mergedSettings = { ...settings }
+    if (slack_webhook_url) mergedSettings.slack_webhook_url = slack_webhook_url
 
     try {
       const tenant = await createTenant({
@@ -53,7 +58,7 @@ export default async function handler(
         line_channel_secret,
         line_channel_access_token,
         liff_id,
-        settings,
+        settings: mergedSettings,
       })
 
       if (!tenant) {
@@ -73,11 +78,19 @@ export default async function handler(
       return res.status(400).json({ error: 'Tenant ID is required' })
     }
 
-    // 空の値を除外（secretとtokenは空の場合は更新しない）
+    // slack_webhook_url を settings にマージ（既存settingsを保持）
+    const { slack_webhook_url, ...restData } = updateData
+    if (slack_webhook_url !== undefined) {
+      const existing = await getTenantById(id)
+      const existingSettings = existing?.settings || {}
+      restData.settings = { ...existingSettings, slack_webhook_url: slack_webhook_url || null }
+    }
+
+    // 空の値を除外（secretとtokenは空の場合は更新しない。settingsはオブジェクトなのでそのまま通す）
     const filteredData: any = {}
-    Object.keys(updateData).forEach(key => {
-      const value = updateData[key]
-      if (value !== '' && value !== null && value !== undefined) {
+    Object.keys(restData).forEach(key => {
+      const value = restData[key]
+      if (key === 'settings' || (value !== '' && value !== null && value !== undefined)) {
         filteredData[key] = value
       }
     })

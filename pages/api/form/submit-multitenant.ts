@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTenantByKey } from '@/lib/tenant'
 import { getLineProfile, sendTextMessage } from '@/lib/line-multitenant'
+import { notifyFormSubmission } from '@/lib/slack'
 
 export default async function handler(
   req: NextApiRequest,
@@ -149,6 +150,33 @@ export default async function handler(
       } catch (e) {
         console.error('Error sending completion message:', e)
       }
+    }
+
+    // Slack通知（テナントにwebhook URLが設定されている場合）
+    const slackWebhookUrl = tenant.settings?.slack_webhook_url
+    if (slackWebhookUrl) {
+      // フォーム名を取得
+      let formName: string | null = null
+      if (formDefId) {
+        const { data: formDef } = await supabaseAdmin
+          .from('form_definitions')
+          .select('name')
+          .eq('id', formDefId)
+          .single()
+        formName = formDef?.name || null
+      }
+
+      const host = req.headers.host || 'localhost:3000'
+      const protocol = host.includes('localhost') ? 'http' : 'https'
+      const adminUrl = `${protocol}://${host}/admin/${tenantKey}/responses`
+
+      notifyFormSubmission(slackWebhookUrl, {
+        tenantName: tenant.name,
+        userName: user?.display_name || null,
+        formName,
+        formData,
+        adminUrl,
+      }).catch(err => console.error('Slack notification error:', err))
     }
 
     return res.status(200).json({ success: true })
